@@ -73,18 +73,18 @@ void Lights::lights_control(uint8_t mode) {
     break;
 
     case 1:   // alle an
-      on_red(100); on_green(100); on_white1(100); on_white2(100);
+      on_red(80); on_green(80); on_white1(80); on_white2(80);
     break;
 
     case 2:   // Position Backbord (links) + Steuerbord (rechts)
-      on_red(100);
-      on_green(100);
+      on_red(80);
+      on_green(80);
       off_white1(); off_white2();
     break;
 
     case 3: {   // Position steady + weisser Doppelblitz
-      on_red(100);
-      on_green(100);
+      on_red(80);
+      on_green(80);
 
       bool s_3 = window(2000, 0, 50) || window(2000, 120, 50);
       if (s_3) {

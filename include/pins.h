@@ -58,7 +58,7 @@
 // ===================================================================
 //  RC-Eingang
 // ===================================================================
-#define PPM_PIN         34        // PPM von Radiolink R12DSM (input-only, RX treibt Pin)
+#define SBUS_PIN         34        // SBUS von Radiolink R12DSM (input-only, RX treibt Pin)
 
 
 // ===================================================================
@@ -70,5 +70,8 @@
 //  19  I2C1 SDA (IMU)      26  LTE TX
 //  21  GPS RX              27  LTE RX
 //  32  I2C2 SDA            33  I2C2 SCL
-//  34  PPM (in-only)       
+//  34  SBUS (in-only)       
 // ===================================================================
+
+#define ThrottleChannel 1
+#define RudderChannel 0
