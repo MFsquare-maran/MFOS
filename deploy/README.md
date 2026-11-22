@@ -36,9 +36,26 @@ Alles Einstellbare kommt aus Variablen (Vorlage `deploy/.env.example`). In der C
 | `WEB_PORT` | nein | `8080` | Port des Dashboards auf diesem Server |
 | `MQTT_BIND` | ja | – | LAN-Adresse dieses Servers für MQTT (nie `0.0.0.0`) |
 | `MQTT_PORT` | nein | `1883` | MQTT-Port auf diesem Server |
+| `DATA_DIR` | nein | `/serverdata/server/mfos-dashboard` | Datenordner auf dem Server (absoluter Pfad), siehe unten |
 | `MQTT_WEBSOCKETS` | nein | `false` | MQTT über WebSocket unter `/mqtt` (siehe Weg B) |
 
 `WEB_PORT` und `MQTT_PORT` sind die Ports **auf diesem Server**, unter denen der Proxy den Stack erreicht. Die Ports **innerhalb** der Container (8080, 1883, 9001) bleiben fest, sie sind von aussen nicht sichtbar. Ändere die Ports nur, wenn sie auf dem Server schon belegt sind, und trage dann im Proxy denselben Port ein.
+
+## Datenordner
+
+Alles, was dauerhaft gespeichert wird, liegt **in einem Ordner auf dem Server**, nicht in Docker-Volumes. Standard ist `/serverdata/server/mfos-dashboard`, einstellbar über `DATA_DIR`.
+
+```
+/serverdata/server/mfos-dashboard/
+└── mosquitto/     Daten des MQTT-Brokers (gespeicherte Nachrichten, Sitzungen). Keine Passwörter.
+```
+
+- Beim Start läuft kurz der Container `mfos-init` (er beendet sich selbst, «Exited (0)» ist richtig). Er legt den Ordner an, falls er fehlt, und gibt dem Broker die Rechte darauf. Du musst nichts von Hand anlegen.
+- Der Ordner muss auf **diesem Server** liegen (nicht auf einer Netzwerkfreigabe ohne Rechteverwaltung, der Broker braucht Besitzrechte).
+- Bei späteren Erweiterungen (Backend) kommen weitere Unterordner dazu.
+- Der Web-Server speichert nichts, er arbeitet im Arbeitsspeicher.
+- **Sichern:** Diesen Ordner kopieren. Mehr ist nicht zu sichern.
+- Ändert sich `DATA_DIR`, bleiben die alten Daten am alten Ort, der Broker startet am neuen leer. Kopiere sie bei Bedarf selbst um.
 
 ## Was dein Reverse Proxy tun muss
 
@@ -104,7 +121,7 @@ Ohne Portainer: `deploy/.env.example` nach `deploy/.env` kopieren, ausfüllen un
 
 **5. Prüfen:**
 
-- Beide Container stehen auf *healthy*.
+- Beide Container stehen auf *healthy*. `mfos-init` steht auf *Exited (0)*, das ist richtig. Im Datenordner liegt jetzt der Unterordner `mosquitto`.
 - Auf diesem Server: `curl -s -o /dev/null -w "%{http_code}\n" http://<WEB_BIND>:8080/` muss **401** liefern (Passwort verlangt), mit `-u admin:DEIN_PASSWORT` **200**.
 - Vom **Proxy-Server** aus dieselbe Adresse aufrufen: Das muss funktionieren. Von einem **anderen** Gerät im LAN darf es **nicht** gehen (Firewall).
 - `https://mfos.mfsquare.ch` fragt nach Benutzer und Passwort, ohne Anmeldung ist nichts zu sehen. `http://…` leitet auf HTTPS um.
@@ -168,7 +185,7 @@ Ein Boot kann nie ein anderes Boot lesen oder steuern.
 
 - **Aktualisieren:** In Portainer *Pull and redeploy* (baut neu). Vorher die Änderungen auf `main` ansehen.
 - **Passwort ändern:** Variable ändern, *Update the stack*. Beim Boot-Passwort danach die Firmware anpassen.
-- **Sichern:** Volume `mosquitto_data` (gespeicherte Nachrichten). Mehr hat der Stack nicht zu sichern, Zertifikate liegen beim Proxy.
+- **Sichern:** Den Datenordner (`DATA_DIR`) kopieren. Mehr hat der Stack nicht zu sichern, Zertifikate liegen beim Proxy.
 - **Logs:** In Portainer je Container. Mosquitto protokolliert Verbindungen und Fehlversuche, keine Passwörter.
 - **Fehlersuche:** Der Stack startet nicht → Container-Log lesen, die Meldung nennt die fehlerhafte Variable. Meldung «WEB_BIND fehlt» → die LAN-Adresse in den Variablen eintragen. Proxy zeigt «502» → ist `WEB_BIND:8080` vom Proxy-Server aus erreichbar (Firewall, richtige Adresse, Container healthy)? Boot verbindet nicht → Uhrzeit, Zertifikatskette, Port und Weg A oder B prüfen.
 

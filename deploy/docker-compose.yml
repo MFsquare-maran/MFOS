@@ -30,6 +30,23 @@ x-hardening: &hardening
 
 services:
 
+  # Einmal-Job: legt den Datenordner auf dem Server an und gibt ihn dem Broker (Benutzer 1883).
+  # Alle dauerhaften Daten liegen in DATA_DIR, nicht in Docker-Volumes.
+  init:
+    <<: *hardening
+    restart: "no"
+    image: alpine:3
+    container_name: mfos-init
+    user: "0:0"
+    command: ["sh", "-c", "mkdir -p /data/mosquitto && chown 1883:1883 /data/mosquitto && chmod 0700 /data/mosquitto"]
+    cap_add:
+      - CHOWN
+      - DAC_OVERRIDE
+      - FOWNER
+    volumes:
+      - ${DATA_DIR:-/serverdata/server/mfos-dashboard}:/data
+    mem_limit: 32m
+
   # MQTT-Broker: Anmeldung Pflicht, Rechte pro Boot. Spricht Klartext (TLS macht der Proxy).
   mosquitto:
     <<: *hardening
@@ -38,6 +55,9 @@ services:
     image: mfos-mosquitto:local
     container_name: mfos-mosquitto
     user: "1883:1883"
+    depends_on:
+      init:
+        condition: service_completed_successfully
     environment:
       MQTT_BOAT_USER: ${MQTT_BOAT_USER:-mfos-1}
       MQTT_BOAT_PASSWORD: ${MQTT_BOAT_PASSWORD:?MQTT_BOAT_PASSWORD fehlt}
@@ -52,7 +72,8 @@ services:
       - /run/mosquitto:uid=1883,gid=1883,mode=0700,size=2m,noexec,nosuid
       - /tmp:size=8m,noexec,nosuid
     volumes:
-      - mosquitto_data:/mosquitto/data
+      # Gespeicherte Nachrichten und Sitzungen des Brokers (keine Passwoerter) im Datenordner auf dem Server
+      - ${DATA_DIR:-/serverdata/server/mfos-dashboard}/mosquitto:/mosquitto/data
     mem_limit: 256m
     healthcheck:
       test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -p 1883 -u mfos-health -P \"$$(cat /run/mosquitto/health.pass)\" -t mfos/_health -m ok -q 1 >/dev/null 2>&1 || exit 1"]
@@ -89,6 +110,3 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-volumes:
-  mosquitto_data:
