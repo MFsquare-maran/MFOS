@@ -7,7 +7,7 @@ Internet ──TLS──▶ Reverse Proxy (Server 1) ──Klartext, nur im LAN�
                   mfos.mfsquare.ch                                   :8080 Dashboard, :1883 MQTT
 ```
 
-> **Stand:** Der Stack wurde beim Schreiben **nicht gestartet**, weil auf dem Entwicklungsrechner kein Docker lief. Skripte, Konfiguration und Passwortprüfungen sind geprüft, der erste echte Start steht noch aus.
+> **Stand:** Der Stack wurde auf dem Entwicklungsrechner **nie gestartet** (kein Docker), sondern in Portainer deployt. Die ersten Fehler (Mosquitto «Address in use», Rechte im Web-Container) sind anhand der Logs behoben, der Start nach dem letzten Fix ist noch zu bestätigen. Was passiert ist und wie es weitergeht: `docs/stand-und-naechste-schritte.md`.
 
 ## Was läuft
 
@@ -90,7 +90,7 @@ Auf dem Weg vom Boot (LTE) zum Server laufen Benutzername und Passwort. Diese St
 
 Ein **dritter Weg ist nicht erlaubt:** Port 1883 direkt ins Internet. Der Stack bindet ihn darum nur an die LAN-Adresse. Stelle `MQTT_BIND` nie auf `0.0.0.0`, und leite am Router **nie** 1883 oder 8080 auf diesen Server weiter.
 
-Welcher Weg bei dir passt, hängt vom Proxy und von der Firmware ab. Entscheide das, **bevor** die Firmware ihren MQTT-Teil bekommt. Passt keiner, kann ich TLS wieder direkt in Mosquitto einbauen (eigene CA, Port 8883 ohne Proxy-Beteiligung).
+Welcher Weg bei dir passt, hängt vom Proxy und von der Firmware ab. Entscheide das, **bevor** die Firmware ihren MQTT-Teil bekommt. Passt keiner der beiden Wege, lässt sich TLS direkt in Mosquitto einbauen (eigene CA, Port 8883 ohne Proxy-Beteiligung). Eine erste Entwurfsfassung davon wurde geschrieben und teilweise geprüft, aber **nie committet** und ist nicht mehr vorhanden. Sie müsste neu geschrieben werden. Der Ansatz war: ein Einmal-Job erzeugt mit OpenSSL eine eigene CA (RSA 4096) und ein Server-Zertifikat (RSA 3072, mit Hostname als SAN, 2 Jahre gültig, bei weniger als 60 Tagen Restlaufzeit erneuert), Mosquitto bekommt einen TLS-Listener auf 8883 mit nur modernen AEAD-Verfahren (kein TLS 1.0/1.1), und die Firmware prüft gegen die eigene CA (`ca.crt`).
 
 ## Einrichten
 
@@ -178,6 +178,7 @@ Ein Boot kann nie ein anderes Boot lesen oder steuern.
 
 - **Proxy → Server ist unverschlüsselt.** Wer im selben LAN mitlesen kann, sieht Dashboard-Passwort und MQTT-Passwörter. Das LAN muss vertrauenswürdig sein, sonst VPN dazwischen.
 - **Die Verschlüsselung hängt am Proxy.** Der Stack kann nicht prüfen, ob dein Proxy TLS wirklich für MQTT macht. Ein falsch eingestellter Stream (ohne TLS) schickt Passwörter im Klartext. Das unbedingt testen (zum Beispiel mit einem Paketmitschnitt oder indem ein Verbindungsversuch ohne TLS scheitern muss).
+- **Kein Login-Bildschirm und kein Abmelden.** HTTP Basic Auth zeigt das Passwortfenster des Browsers, der Browser merkt sich die Zugangsdaten bis zum Schliessen, ein Logout-Knopf ist damit nicht sauber möglich. Eine echte Login-Seite (mit Abmelden, Sperre, Zweitfaktor) ist offen: `docs/stand-und-naechste-schritte.md`, Abschnitt 4.
 - **Kein Zweitfaktor, keine Sperre bei Fehlversuchen.** Die Anmeldung ist ein Passwort per HTTP Basic Auth. Gegen Raten hilft nur die Länge (32 zufällige Zeichen sind praktisch nicht zu erraten). Wer es besser will: das Dashboard nur per **VPN** (WireGuard, Tailscale) erreichbar machen, oder davor Authelia, CrowdSec oder Cloudflare Access setzen.
 - **MQTT hat keine eingebaute Bremse für Raten.** Auch hier schützt die Passwortlänge. `max_connections` ist auf 100 begrenzt. Der Broker sieht nur die Adresse des Proxys, nicht die des Boots.
 - **Das Boot-Passwort liegt im Flash der Firmware.** Wer das Boot in die Hand bekommt, kann es auslesen. Dann das Passwort in den Variablen ändern und neu starten.

@@ -254,7 +254,7 @@ Das muss das Boot **nicht** liefern:
 4. **Aktion bei kritischem Akku oder ESC:** `battCrit`, `escCrit`.
 5. **«Position halten»:** Dein ESC fährt nur vorwärts; ein echtes Halten ist damit grob (Pulsen um den Punkt). Vorschlag: Option streichen.
 6. **Datenmenge bei 100 ms:** rund 4,6 kB/s je 460-Byte-Nachricht, also etwa 400 MB pro Tag über LTE. Dafür Bündeln mehrerer Messwerte oder ein kompaktes Format prüfen.
-7. **Anmeldung im Dashboard:** Heute ein Passwort per HTTP Basic Auth (ohne Zweitfaktor). Mit echten Daten und Befehlen braucht es mehr (Zweitfaktor oder VPN), siehe `deploy/README.md`.
+7. **Anmeldung im Dashboard:** Heute ein Passwort per HTTP Basic Auth (Browser-Fenster, kein Abmelden, ohne Zweitfaktor). Gewünscht sind eine echte Login-Seite und ein Logout-Knopf. Mit echten Daten und Befehlen braucht es mehr (Zweitfaktor oder VPN). Optionen und Empfehlung: `docs/stand-und-naechste-schritte.md`, Abschnitt 4.
 8. **Mehrere Boote:** Die Topics tragen schon eine Kennung. Der Stack kennt aber einen Boot-Benutzer und das Dashboard nur ein Boot.
 9. **Zertifikat je Boot (mTLS)** statt Passwort im Flash, als spätere Verschärfung.
 10. **TLS über das LTE-Modem:** Ob TLS auf dem A7670E (AT-Befehle) oder im ESP32 (über die Modem-Verbindung) läuft, ist nicht entschieden und nicht geprüft.

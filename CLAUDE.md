@@ -16,7 +16,7 @@ docs/schnittstelle.md     VERTRAG Boot ↔ Dashboard (einzige Quelle der Wahrhei
 .claude/launch.json       startet das Dashboard in der Vorschau (Name: dashboard, Port 8765)
 ```
 
-Stand: Treiber vorhanden, Dashboard als Mockup fertig, **Firmware kann die Schnittstelle noch nicht** (kein LTE, WLAN, MQTT, scharf/NOT-AUS, Navigation). Siehe `firmware/README.md`. Der Server-Stack in `deploy/` ist geschrieben, aber **nie gestartet** (kein Docker beim Schreiben), ein Backend dahinter gibt es noch nicht.
+Stand: Treiber vorhanden, Dashboard als Mockup fertig, **Firmware kann die Schnittstelle noch nicht** (kein LTE, WLAN, MQTT, scharf/NOT-AUS, Navigation). Siehe `firmware/README.md`. Der Server-Stack in `deploy/` ist in Portainer deployt (Fehler anhand der Logs behoben, der Start nach dem letzten Fix ist noch zu bestätigen), ein Backend dahinter gibt es noch nicht. **Aktueller Stand, Entscheidungen, offene Punkte und die Reihenfolge fürs Weitermachen: `docs/stand-und-naechste-schritte.md`. Zuerst lesen, wenn eine Sitzung beginnt.**
 
 ## Befehle
 
@@ -42,7 +42,7 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 - Haltung der Container: kein Root wo möglich, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem, Speicher- und Prozessgrenzen, kein `docker.sock`, Ports nur an der LAN-Adresse veröffentlichen (`WEB_BIND`, `MQTT_BIND`), nie ins Internet. Neue Dienste bekommen dieselbe Haltung (`x-hardening` in der Compose-Datei).
 - Shell-Skripte und Container-Dateien **mit LF-Zeilenenden** (`.gitattributes` erzwingt es), POSIX-`sh` (Alpine/BusyBox), kein Bash-Spezifisches.
 - Mosquitto-Konfiguration: Kommentare nur in eigenen Zeilen (keine am Zeilenende). Listener-Optionen wie `max_connections` **hinter** den jeweiligen `listener` schreiben, sonst legt Mosquitto einen zusätzlichen Standard-Listener auf Port 1883 an («Address in use»). `per_listener_settings` nicht verwenden (veraltet).
-- Änderungen am Stack sind **ungetestet**, solange kein Docker verfügbar ist. Skripte mit `bash -n` prüfen, `docker-compose.yml` mit YAML-Parser, und ehrlich sagen, dass der Start fehlt.
+- Auf dem Entwicklungsrechner läuft **kein Docker**, Änderungen am Stack sind dort nicht startbar. Skripte mit `bash -n` prüfen, `docker-compose.yml` mit einem YAML-Parser, erzeugte Konfiguration mit einem Attrappen-Test, und **ehrlich sagen, dass der echte Start erst in Portainer geprüft wird**. Die Rückmeldung kommt dann über die Container-Logs des Besitzers.
 - Das Dashboard läuft unter strenger CSP (siehe `deploy/web/Caddyfile`): keine Inline-Skripte, keine neuen Fremd-Domains ohne Eintrag dort.
 
 ## Dashboard: Konventionen
@@ -117,6 +117,7 @@ Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-P
 
 ## Offene Entscheidungen
 
+0. **Login-Bildschirm und Logout-Knopf** fürs Dashboard (heute nur Basic Auth: Browser-Fenster, kein Abmelden). Optionen und Empfehlung (Login im Backend) in `docs/stand-und-naechste-schritte.md`, Abschnitt 4. **Noch nicht entschieden und nicht gebaut.**
 1. **Backend** hinter Mosquitto: Speicherung, Fahrten, Kurse, Befehle mit Verfall, Anmeldung mit Zweitfaktor. (ThingsBoard ist entschieden **nicht**.) Bis dahin zeigt das Dashboard nur Simulation und sollte nicht mit echten Daten betrieben werden.
 2. **UART:** ESP32 hat 3 UARTs (USB, GPS, SBUS), das LTE-Modem wäre die vierte. `pins.h` nennt UART1 für das Modem, `RcReceiver` nutzt standardmässig UART1.
 3. **Vollgas-Geschwindigkeit** (Dashboard nimmt 14 km/h bei 100 % Gas an) messen und als Parameter einführen.
