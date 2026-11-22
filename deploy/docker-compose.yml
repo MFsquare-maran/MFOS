@@ -30,24 +30,9 @@ x-hardening: &hardening
 
 services:
 
-  # Einmal-Job: legt den Datenordner auf dem Server an und gibt ihn dem Broker (Benutzer 1883).
-  # Alle dauerhaften Daten liegen in DATA_DIR, nicht in Docker-Volumes.
-  init:
-    <<: *hardening
-    restart: "no"
-    image: alpine:3
-    container_name: mfos-init
-    user: "0:0"
-    command: ["sh", "-c", "mkdir -p /data/mosquitto && chown 1883:1883 /data/mosquitto && chmod 0700 /data/mosquitto"]
-    cap_add:
-      - CHOWN
-      - DAC_OVERRIDE
-      - FOWNER
-    volumes:
-      - ${DATA_DIR:-/serverdata/server/mfos-dashboard}:/data
-    mem_limit: 32m
-
   # MQTT-Broker: Anmeldung Pflicht, Rechte pro Boot. Spricht Klartext (TLS macht der Proxy).
+  # Alle dauerhaften Daten liegen in DATA_DIR. Den Ordner <DATA_DIR>/mosquitto legst du EINMAL
+  # von Hand an (Befehl in deploy/README.md), er muss dem Benutzer 1883 gehoeren.
   mosquitto:
     <<: *hardening
     build:
@@ -59,9 +44,6 @@ services:
     image: mfos-mosquitto:local
     container_name: mfos-mosquitto
     user: "1883:1883"
-    depends_on:
-      init:
-        condition: service_completed_successfully
     environment:
       MQTT_BOAT_USER: ${MQTT_BOAT_USER:-mfos-1}
       MQTT_BOAT_PASSWORD: ${MQTT_BOAT_PASSWORD:?MQTT_BOAT_PASSWORD fehlt}

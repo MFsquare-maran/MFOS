@@ -50,7 +50,13 @@ Alles, was dauerhaft gespeichert wird, liegt **in einem Ordner auf dem Server**,
 └── mosquitto/     Daten des MQTT-Brokers (gespeicherte Nachrichten, Sitzungen). Keine Passwörter.
 ```
 
-- Beim Start läuft kurz der Container `mfos-init` (er beendet sich selbst, «Exited (0)» ist richtig). Er legt den Ordner an, falls er fehlt, und gibt dem Broker die Rechte darauf. Du musst nichts von Hand anlegen.
+- **Einmal von Hand anlegen** (auf dem Server, ersetze den Pfad, wenn du `DATA_DIR` geändert hast). Der Broker läuft nicht als Root und braucht Besitzrechte auf seinem Ordner:
+
+```bash
+sudo mkdir -p /serverdata/server/mfos-dashboard/mosquitto && sudo chown 1883:1883 /serverdata/server/mfos-dashboard/mosquitto && sudo chmod 700 /serverdata/server/mfos-dashboard/mosquitto
+```
+
+- Vergisst du das, legt Docker den Ordner als Root an, und `mfos-mosquitto` bricht mit der Meldung «Der Datenordner ist nicht beschreibbar» und genau diesem Befehl ab.
 - Der Ordner muss auf **diesem Server** liegen (nicht auf einer Netzwerkfreigabe ohne Rechteverwaltung, der Broker braucht Besitzrechte).
 - Bei späteren Erweiterungen (Backend) kommen weitere Unterordner dazu.
 - Der Web-Server speichert nichts, er arbeitet im Arbeitsspeicher.
@@ -121,7 +127,7 @@ Ohne Portainer: `deploy/.env.example` nach `deploy/.env` kopieren, ausfüllen un
 
 **5. Prüfen:**
 
-- Beide Container stehen auf *healthy*. `mfos-init` steht auf *Exited (0)*, das ist richtig. Im Datenordner liegt jetzt der Unterordner `mosquitto`.
+- Beide Container stehen auf *healthy*. Im Datenordner liegen nach dem ersten Start Dateien von Mosquitto (`mosquitto.db`).
 - Auf diesem Server: `curl -s -o /dev/null -w "%{http_code}\n" http://<WEB_BIND>:8080/` muss **401** liefern (Passwort verlangt), mit `-u admin:DEIN_PASSWORT` **200**.
 - Vom **Proxy-Server** aus dieselbe Adresse aufrufen: Das muss funktionieren. Von einem **anderen** Gerät im LAN darf es **nicht** gehen (Firewall).
 - `https://mfos.mfsquare.ch` fragt nach Benutzer und Passwort, ohne Anmeldung ist nichts zu sehen. `http://…` leitet auf HTTPS um.

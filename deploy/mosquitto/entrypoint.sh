@@ -31,6 +31,11 @@ case "${MQTT_WEBSOCKETS:-false}" in true|false) ;; *) fail "MQTT_WEBSOCKETS muss
 [ "$MQTT_BOAT_USER" != "mfos-health" ] && [ "$MQTT_BACKEND_USER" != "mfos-health" ] \
   || fail "Der Name mfos-health ist reserviert"
 
+# Der Datenordner muss dem Benutzer 1883 gehoeren und beschreibbar sein. Legt Docker den Ordner selbst an,
+# gehoert er root, dann kann der Broker nichts speichern.
+[ -d /mosquitto/data ] && [ -w /mosquitto/data ] \
+  || fail "Der Datenordner ist nicht beschreibbar. Auf dem Server EINMAL ausfuehren (DATA_DIR anpassen): sudo mkdir -p /serverdata/server/mfos-dashboard/mosquitto && sudo chown 1883:1883 /serverdata/server/mfos-dashboard/mosquitto && sudo chmod 700 /serverdata/server/mfos-dashboard/mosquitto"
+
 RUN=/run/mosquitto
 mkdir -p "$RUN"
 umask 077
