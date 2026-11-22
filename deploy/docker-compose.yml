@@ -1,8 +1,9 @@
 # MFOS Server: Mosquitto (MQTT) und Web-Server mit Passwortschutz, HINTER einem Reverse Proxy.
 #
 # TLS (Zertifikate, HTTPS) macht der vorgeschaltete Reverse Proxy, nicht dieser Stack.
-# Darum veroeffentlicht dieser Stack KEINEN Port ins Internet: Der Proxy erreicht die Dienste
-# ueber ein gemeinsames Docker-Netz (PROXY_NETWORK) oder ueber Ports auf localhost.
+# Der Proxy laeuft auf einem ANDEREN Server und erreicht die Dienste ueber das lokale Netz:
+# WEB_BIND und MQTT_BIND sind die LAN-Adresse DIESES Servers. Die Ports duerfen nur dem Proxy
+# offenstehen (Firewall) und NIE aus dem Internet erreichbar sein, denn hier gibt es kein TLS.
 #
 # Gedacht fuer Portainer (Stack aus dem Git-Repository), geht aber auch mit
 #   docker compose --env-file .env up -d --build
@@ -44,12 +45,9 @@ services:
       MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD fehlt}
       MQTT_WEBSOCKETS: ${MQTT_WEBSOCKETS:-false}
     ports:
-      # Nur auf localhost. NIEMALS auf 0.0.0.0 stellen, wenn der Server aus dem Internet erreichbar ist:
+      # Nur an der LAN-Adresse dieses Servers. NIEMALS 0.0.0.0 und nie eine Internet-Adresse:
       # Auf diesem Port gibt es kein TLS, Passwoerter gingen im Klartext durchs Netz.
-      - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-1883}:1883"
-    networks:
-      - default
-      - proxy
+      - "${MQTT_BIND:?MQTT_BIND fehlt (LAN-Adresse dieses Servers, z. B. 192.168.1.20, nie 0.0.0.0)}:${MQTT_PORT:-1883}:1883"
     tmpfs:
       - /run/mosquitto:uid=1883,gid=1883,mode=0700,size=2m,noexec,nosuid
       - /tmp:size=8m,noexec,nosuid
@@ -78,11 +76,8 @@ services:
       DASHBOARD_USER: ${DASHBOARD_USER:?DASHBOARD_USER fehlt}
       DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?DASHBOARD_PASSWORD fehlt}
     ports:
-      # Nur auf localhost (fuer einen Proxy auf demselben Rechner). Ein Proxy im Docker-Netz braucht das nicht.
-      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
-    networks:
-      - default
-      - proxy
+      # Nur an der LAN-Adresse dieses Servers, fuer den Proxy. Nie 0.0.0.0 (kein TLS auf diesem Port).
+      - "${WEB_BIND:?WEB_BIND fehlt (LAN-Adresse dieses Servers, z. B. 192.168.1.20, nie 0.0.0.0)}:${WEB_PORT:-8080}:8080"
     tmpfs:
       - /tmp:size=16m,noexec,nosuid
       - /data:size=8m,noexec,nosuid
@@ -94,13 +89,6 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
-
-networks:
-  # Gemeinsames Netz mit deinem Reverse Proxy. Muss vorher existieren (docker network create proxy)
-  # oder den Namen des Netzes deines Proxys tragen (PROXY_NETWORK).
-  proxy:
-    name: ${PROXY_NETWORK:-proxy}
-    external: true
 
 volumes:
   mosquitto_data:

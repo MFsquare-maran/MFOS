@@ -3,7 +3,7 @@
 # Achtung: Mosquitto kennt keine Kommentare am Zeilenende, Kommentare nur in eigenen Zeilen.
 #
 # TLS macht der vorgeschaltete Reverse Proxy. Dieser Broker spricht nur Klartext und ist
-# deshalb NUR im Docker-Netz (und auf localhost) erreichbar, nie direkt aus dem Internet.
+# deshalb NUR im LAN fuer den Proxy erreichbar (MQTT_BIND), nie direkt aus dem Internet.
 
 per_listener_settings false
 
