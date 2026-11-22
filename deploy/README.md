@@ -183,7 +183,7 @@ Ein Boot kann nie ein anderes Boot lesen oder steuern.
 
 ## Betrieb
 
-- **Aktualisieren:** In Portainer *Pull and redeploy* (baut neu). Vorher die Änderungen auf `main` ansehen.
+- **Aktualisieren:** In Portainer *Pull and redeploy*. Die Bilder von `mosquitto` und `web` werden bei **jedem** Start oder Update des Stacks neu gebaut (`pull_policy: build`), samt frischem Basis-Bild. Du musst «Re-build» nicht extra einschalten. Vorher die Änderungen auf `main` ansehen. Das setzt ein aktuelles Docker Compose (Version 2) voraus; baut Portainer trotzdem nicht neu, im Stack-Editor *Re-pull image and redeploy* einschalten.
 - **Passwort ändern:** Variable ändern, *Update the stack*. Beim Boot-Passwort danach die Firmware anpassen.
 - **Sichern:** Den Datenordner (`DATA_DIR`) kopieren. Mehr hat der Stack nicht zu sichern, Zertifikate liegen beim Proxy.
 - **Logs:** In Portainer je Container. Mosquitto protokolliert Verbindungen und Fehlversuche, keine Passwörter.

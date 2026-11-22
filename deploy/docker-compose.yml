@@ -52,6 +52,10 @@ services:
     <<: *hardening
     build:
       context: ./mosquitto
+      # Basis-Bild bei jedem Bau neu pruefen (Sicherheits-Updates)
+      pull: true
+    # Immer neu bauen, wenn der Stack gestartet oder aktualisiert wird
+    pull_policy: build
     image: mfos-mosquitto:local
     container_name: mfos-mosquitto
     user: "1883:1883"
@@ -88,6 +92,10 @@ services:
     build:
       context: ..
       dockerfile: deploy/web/Dockerfile
+      # Basis-Bild bei jedem Bau neu pruefen (Sicherheits-Updates)
+      pull: true
+    # Immer neu bauen, wenn der Stack gestartet oder aktualisiert wird
+    pull_policy: build
     image: mfos-web:local
     container_name: mfos-web
     user: "10001:10001"
