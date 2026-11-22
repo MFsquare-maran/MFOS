@@ -1,0 +1,517 @@
+<!doctype html>
+<html lang="de" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MFOS Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="img/logo.svg">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ Navigation ============ -->
+  <nav class="nav" id="nav">
+    <div class="brand" title="MFOS">
+      <svg class="logo" viewBox="0 0 100 100" aria-hidden="true">
+        <defs>
+          <mask id="mfosGap" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+            <rect width="100" height="100" fill="#fff"/>
+            <path d="M5.5 46L50 25L94.5 46L80.5 82H19.5Z" fill="#000" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+          </mask>
+          <mask id="mfosCut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+            <rect width="100" height="100" fill="#fff"/>
+            <g stroke="#000" stroke-width="2.2" stroke-linecap="round"><path d="M29 20.6H37M46 20.6H54M63 20.6H71"/></g>
+            <circle cx="42.7" cy="40" r="2" fill="#000"/><circle cx="57.3" cy="40" r="2" fill="#000"/>
+            <path d="M49.2 26.5H50.8L50 40Z" fill="#000"/>
+          </mask>
+        </defs>
+        <g fill="currentColor" mask="url(#mfosCut)">
+          <g mask="url(#mfosGap)">
+            <rect x="43" y="0" width="14.5" height="7.5" rx="1.2"/>
+            <rect x="34.4" y="6.4" width="31.2" height="8" rx="1.2"/>
+            <rect x="24.2" y="13.4" width="51.8" height="23" rx="1.4"/>
+          </g>
+          <path d="M5.5 46L50 25L94.5 46L80.5 82H19.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+        </g>
+        <g fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+          <path d="M2.5 88.5q4.8-3.4 9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0"/>
+          <path d="M2.5 97.5q4.8-3.4 9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0"/>
+        </g>
+      </svg>
+      <span>MFOS</span>
+    </div>
+    <button class="nav-item active" data-view="live"><i data-icon="map"></i><span>Live</span></button>
+    <button class="nav-item" data-view="mission"><i data-icon="route"></i><span>Mission</span></button>
+    <button class="nav-item" data-view="courses"><i data-icon="folder"></i><span>Kurse</span></button>
+    <button class="nav-item" data-view="energy"><i data-icon="bolt"></i><span>Telemetrie</span></button>
+    <button class="nav-item" data-view="control"><i data-icon="sliders"></i><span>Einstellungen</span></button>
+    <button class="nav-item" data-view="tests"><i data-icon="flask"></i><span>Tests</span></button>
+    <button class="nav-item" data-view="replay"><i data-icon="replay"></i><span>Replay</span></button>
+    <button class="nav-item" data-view="status"><i data-icon="activity"></i><span>Status</span><b class="badge" id="navAlarmBadge" hidden>0</b></button>
+  </nav>
+
+  <div class="main">
+    <!-- ============ Top-Leiste ============ -->
+    <header class="topbar">
+      <div class="tb-title"><strong>MFOS-1</strong><small>Modellboot</small></div>
+      <div class="tb-items">
+        <div class="pill" id="tbConn"><i class="dot"></i><span>–</span></div>
+        <div class="pill rec" id="tbRec" title="Fahrt wird aufgezeichnet" hidden><i class="dot"></i><span>REC</span></div>
+        <div class="pill" id="tbArm" title="Scharf = Antrieb für Mission und Return Home freigegeben"><i data-icon="lock"></i><span>–</span></div>
+        <div class="pill" id="tbMode"><span>–</span></div>
+        <div class="pill" id="tbLte" title="Aktive Verbindung"><span class="lbl" id="tbLinkLbl">LTE</span><span class="bars" id="tbLteBars"><i></i><i></i><i></i><i></i></span><span id="tbLteTxt">–</span></div>
+        <div class="pill" id="tbData" title="LTE-Datenverbrauch seit dem letzten Reset (Schätzung)"><span class="lbl">LTE-Daten</span><span>–</span></div>
+        <div class="pill" id="tbGps" title="GPS-Satelliten"><i data-icon="sat"></i><span>–</span></div>
+        <div class="pill" id="tbBat" title="Akku">
+          <svg class="batt" viewBox="0 0 30 15" aria-hidden="true">
+            <rect x=".75" y=".75" width="25" height="13.5" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/>
+            <rect x="26.6" y="4.8" width="2.4" height="5.4" rx="1.1" fill="currentColor"/>
+            <rect id="tbBatFill" x="2.6" y="2.6" width="21.3" height="9.8" rx="1.6"/>
+          </svg><span>–</span></div>
+        <div class="pill" id="tbCur" title="Strom und Leistung (alles zusammen)"><span class="lbl">Strom</span><span>–</span></div>
+        <div class="pill" id="tbUsed" title="Seit dem letzten Zurücksetzen verbrauchte Energie"><span class="lbl">Verbraucht</span><span>–</span></div>
+        <div class="pill" id="tbRem" title="Restlaufzeit bei aktuellem Strom"><span class="lbl">Rest</span><span>–</span></div>
+        <div class="pill" id="tbHull" title="Temperatur Innenraum"><span class="lbl">Innen</span><span>–</span></div>
+        <div class="pill" id="tbEsc" title="Temperatur ESC (Fahrtregler)"><span class="lbl">ESC</span><span>–</span></div>
+        <div class="pill" id="tbPump" title="Kühlpumpe: Modus und Drehzahl"><span class="lbl">Pumpe</span><span>–</span></div>
+        <div class="pill" id="tbLight" title="Lichtmodus"><span class="lbl">Licht</span><span>–</span></div>
+        <div class="pill" id="tbLeak" title="Leck-Sensor"><span class="lbl">Leck</span><span>–</span></div>
+        <button class="pill unit-btn" id="unitBtn" title="Geschwindigkeit: km/h oder m/s">km/h</button>
+        <button class="icon-btn" id="themeBtn" title="Hell/Dunkel umschalten"><i data-icon="theme"></i></button>
+      </div>
+    </header>
+
+    <div id="alarmBar" class="alarmbar" hidden></div>
+
+    <main>
+
+      <!-- ================= LIVE ================= -->
+      <section id="view-live" class="view active">
+        <div class="live-grid">
+          <div class="card map-card">
+            <div class="map-wrap"><div id="liveMap" class="map"></div></div>
+            <div class="map-tools">
+              <label class="chk"><input type="checkbox" id="followChk" checked> Boot folgen</label>
+              <label class="chk"><input type="checkbox" id="trackChk" checked> Spur</label>
+              <label class="chk"><input type="checkbox" id="fenceChk" checked> Geofence</label>
+              <label class="chk"><input type="checkbox" id="radiusChk" checked> Ankunftsradius</label>
+              <span class="grow"></span>
+              <span class="muted small" id="mapTarget">–</span>
+            </div>
+            <div class="actionbar">
+              <button class="btn arm" id="btnArm"><i data-icon="lock"></i> <span>Scharf schalten</span></button>
+              <button class="btn primary" id="btnStart"><i data-icon="play"></i> Mission starten</button>
+              <button class="btn" id="btnStop"><i data-icon="stop"></i> Stopp</button>
+              <button class="btn" id="btnRth"><i data-icon="home"></i> Return Home</button>
+              <button class="btn danger" id="btnEstop"><i data-icon="alert"></i> NOT-AUS</button>
+            </div>
+          </div>
+
+          <div class="side">
+            <div class="card">
+              <h3>Telemetrie</h3>
+              <div class="stat-row">
+                <div class="stat big"><label>Geschwindigkeit</label><b id="lvSpeed">–</b><small id="lvSpeedUnit">km/h</small></div>
+                <div class="stat big"><label>Kurs</label><b id="lvHeading">–</b><small>°</small></div>
+              </div>
+              <div class="kv">
+                <div><span>Modus</span><b id="lvMode">–</b></div>
+                <div><span>Mission</span><b id="lvMission">–</b></div>
+                <div><span>Nächster Wegpunkt</span><b id="lvWp">–</b></div>
+                <div><span>Distanz / Ankunft</span><b id="lvEta">–</b></div>
+                <div><span>Soll-Kurs / Abweichung</span><b id="lvBrg">–</b></div>
+                <div><span>Entfernung zu Home</span><b id="lvHome">–</b></div>
+                <div><span>Fahrzeit / Strecke (Aufnahme)</span><b id="lvTrip">–</b></div>
+                <div><span>Position</span><b id="lvPos" class="mono">–</b></div>
+                <div><span>GPS</span><b id="lvGps">–</b></div>
+                <div><span>LTE</span><b id="lvLte">–</b></div>
+                <div><span>Luftdruck</span><b id="lvPress">–</b></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Kompass &amp; Lage</h3>
+              <div class="inst">
+                <svg id="compass" viewBox="0 0 120 120" aria-label="Kompass"></svg>
+                <svg id="horizon" viewBox="0 0 120 120" aria-label="Lage"></svg>
+              </div>
+              <div class="kv two">
+                <div><span>Roll</span><b id="lvRoll">–</b></div>
+                <div><span>Pitch</span><b id="lvPitch">–</b></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h3>Antriebssysteme</h3>
+              <div class="bar-row"><label>Gas</label>
+                <div class="bar"><i id="barThr"></i></div><b id="lvThr">–</b></div>
+              <div class="bar-row"><label>Ruder</label>
+                <div class="bar center"><i id="barRud"></i><u></u></div><b id="lvRud">–</b></div>
+            </div>
+
+            <div class="card" id="liveCtl">
+              <div class="card-head">
+                <h3>Einstellungen</h3>
+                <span class="tag" id="lcSync">–</span>
+              </div>
+              <div class="lc-block">
+                <div class="lc-label">Licht</div>
+                <div class="chips" id="lcLight"></div>
+              </div>
+              <div class="lc-block">
+                <div class="lc-label">Kühlpumpe (ESC) <b id="lcPumpState" class="muted"></b></div>
+                <div class="chips" id="lcPumpMode">
+                  <button class="chip" data-pump="auto" title="Schaltet nach der ESC-Temperatur">Auto</button>
+                  <button class="chip" data-pump="on">Ein</button>
+                  <button class="chip" data-pump="off">Aus</button>
+                </div>
+                <div class="slider-row">
+                  <label for="lcPumpSpeed">Drehzahl</label>
+                  <input type="range" id="lcPumpSpeed" min="10" max="100" step="5" value="100">
+                  <b id="lcPumpSpeedTxt">100 %</b>
+                </div>
+              </div>
+              <div class="lc-block">
+                <div class="lc-label">Fahrt</div>
+                <div class="form" id="lcParams"></div>
+                <p class="notice" id="lcLimit" hidden></p>
+              </div>
+              <p class="muted small">Änderungen gelten sofort und werden vom Boot quittiert. Alle Parameter unter «Einstellungen».</p>
+            </div>
+
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= MISSION ================= -->
+      <section id="view-mission" class="view">
+        <div class="mission-grid">
+          <div class="card map-card">
+            <div class="map-wrap"><div id="missionMap" class="map"></div></div>
+            <div class="map-tools">
+              <span class="muted small">Karte anklicken = Wegpunkt hinzufügen · Marker ziehen = verschieben · Kreis = Ankunftsradius</span>
+            </div>
+          </div>
+          <div class="side">
+            <div class="card">
+              <div class="card-head">
+                <h3>Wegpunkte</h3>
+                <span class="tag" id="mSync">–</span>
+              </div>
+              <ol class="wp-list" id="wpList"></ol>
+              <div class="kv two" id="mTotals">
+                <div><span>Strecke</span><b id="mDist">–</b></div>
+                <div><span>Geschätzte Dauer</span><b id="mDur">–</b></div>
+              </div>
+              <div class="save-row">
+                <input type="text" id="mName" placeholder="Kursname" maxlength="60">
+                <button class="btn" id="mSave">Als Kurs speichern</button>
+              </div>
+              <div class="btn-row">
+                <button class="btn primary" id="mSend"><i data-icon="upload"></i> An Boot senden</button>
+                <button class="btn" id="mHome" title="Home als Wegpunkt einfügen (z. B. Start oder Ende)">+ Home (H)</button>
+                <button class="btn" id="mSample">Beispielkurs</button>
+                <button class="btn ghost" id="mClear">Leeren</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-head">
+                <h3>Home-Position</h3>
+                <span class="tag" id="hSync">–</span>
+              </div>
+              <div class="form">
+                <div class="field wideinp"><label for="hLat">Breite</label><div class="inwrap"><input type="number" id="hLat" step="0.00001"><span class="unit">°</span></div></div>
+                <div class="field wideinp"><label for="hLon">Länge</label><div class="inwrap"><input type="number" id="hLon" step="0.00001"><span class="unit">°</span></div></div>
+              </div>
+              <div class="btn-row">
+                <button class="btn" id="hPick">Auf Karte wählen</button>
+                <button class="btn" id="hBoat">Boot-Position</button>
+                <button class="btn primary" id="hSend"><i data-icon="upload"></i> An Boot senden</button>
+              </div>
+              <p class="muted small">Ziel von «Return Home» und Mittelpunkt des Geofence. Der Marker «H» lässt sich auch ziehen.</p>
+            </div>
+            <div class="card">
+              <h3>Missions-Parameter</h3>
+              <div class="form" id="mParams"></div>
+              <p class="notice" id="mLimit" hidden></p>
+              <p class="muted small">Gleiche Werte wie unter «Einstellungen».</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= KURSE ================= -->
+      <section id="view-courses" class="view">
+        <div class="mission-grid">
+          <div class="card">
+            <div class="card-head">
+              <h3>Gespeicherte Kurse</h3>
+              <div class="btn-row tight">
+                <label class="btn"><i data-icon="upload"></i> Importieren
+                  <input type="file" id="cImport" accept=".gpx,.json,.geojson,.csv,.txt" multiple hidden></label>
+                <button class="btn" id="cNew">+ Neuer Kurs</button>
+              </div>
+            </div>
+            <div class="dropzone" id="cDrop">Datei hierher ziehen · GPX, GeoJSON, JSON oder CSV (Breite, Länge je Zeile)</div>
+            <ul class="course-list" id="courseList"></ul>
+          </div>
+          <div class="side">
+            <div class="card" id="courseDetail"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TELEMETRIE / ENERGIE ================= -->
+      <section id="view-energy" class="view">
+        <div class="tiles" id="energyTiles"></div>
+        <div class="range">
+          <span class="muted small">Zeitfenster</span>
+          <span class="chips" id="rangeChips">
+            <button class="chip" data-range="60">1 min</button>
+            <button class="chip active" data-range="300">5 min</button>
+            <button class="chip" data-range="600">10 min</button>
+            <button class="chip" data-range="1800">30 min</button>
+            <button class="chip" data-range="3600">1 h</button>
+            <button class="chip" data-range="7200">2 h</button>
+            <button class="chip" data-range="10800">3 h</button>
+            <button class="chip" data-range="14400">4 h</button>
+            <button class="chip" data-range="18000">5 h</button>
+          </span>
+          <span class="range-custom" title="Eigenes Zeitfenster, höchstens 5 h">
+            <input type="number" id="rangeVal" min="1" max="300" value="5" aria-label="Eigenes Zeitfenster">
+            <select id="rangeUnit" aria-label="Einheit"><option value="1">Sek.</option><option value="60" selected>Min.</option><option value="3600">Std.</option></select>
+          </span>
+          <span class="muted small" id="rangeInfo"></span>
+          <span class="grow"></span>
+          <span class="muted small zoom-hint">Zoomen: Mausrad oder Bereich ziehen · Verschieben: Shift + ziehen</span>
+          <button class="btn primary" id="zoomReset" hidden>Zoom zurücksetzen · Live</button>
+        </div>
+        <div class="chart-grid" id="chartGrid"></div>
+      </section>
+
+      <!-- ================= EINSTELLUNGEN ================= -->
+      <section id="view-control" class="view">
+        <div class="control-grid">
+          <div class="card wide" id="netCard">
+            <div class="card-head">
+              <h3>Verbindung</h3>
+              <span class="tag" id="netTag">–</span>
+            </div>
+            <div class="net-grid">
+              <div>
+                <div class="lc-label">Verbindungsart</div>
+                <div class="chips" id="netMode">
+                  <button class="chip" data-nm="auto" title="WLAN, wenn gespeichert und erreichbar, sonst LTE">Auto (WLAN bevorzugt)</button>
+                  <button class="chip" data-nm="lte">Nur LTE</button>
+                  <button class="chip" data-nm="wifi">Nur WLAN</button>
+                </div>
+                <p class="muted small" id="netHint"></p>
+                <div class="kv" id="netInfo"></div>
+              </div>
+              <div>
+                <div class="lc-label">WLAN-Zugang (wird an das Boot gesendet)</div>
+                <div class="form net-form">
+                  <div class="field"><label for="wSsid">Name (SSID)</label><div class="inwrap"><input type="text" id="wSsid" maxlength="32" autocomplete="off" spellcheck="false"></div></div>
+                  <div class="field"><label for="wPass">Passwort</label>
+                    <div class="inwrap"><input type="password" id="wPass" maxlength="63" autocomplete="new-password" placeholder="neues Passwort"><button class="btn ghost" id="wShow" type="button">Zeigen</button></div></div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn primary" id="wConnect">Speichern &amp; verbinden</button>
+                  <button class="btn ghost" id="wForget">WLAN vergessen</button>
+                </div>
+                <p class="muted small" id="wMsg"></p>
+              </div>
+            </div>
+          </div>
+          <div class="card wide">
+            <div class="card-head">
+              <h3>Parameter</h3>
+              <span class="tag" id="pSync">–</span>
+            </div>
+            <div class="param-groups" id="paramGroups"></div>
+            <div class="btn-row">
+              <button class="btn primary" id="pSend"><i data-icon="upload"></i> An Boot senden</button>
+              <button class="btn ghost" id="pReset">Verwerfen</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= TESTS ================= -->
+      <section id="view-tests" class="view">
+        <div class="card test-gate" id="testGate"></div>
+        <div class="test-grid locked" id="testGrid">
+
+          <div class="card">
+            <h3>Antrieb (ESC / Motor)</h3>
+            <div class="slider-row">
+              <label for="tMotorPower">Leistung</label>
+              <input type="range" id="tMotorPower" min="5" max="100" step="5" value="10">
+              <b id="tMotorPowerTxt">10 %</b>
+            </div>
+            <div class="btn-row">
+              <button class="btn primary hold" id="tMotorHold">Gedrückt halten: Motor läuft</button>
+              <button class="btn" id="tMotorPulse">Impuls 2 s</button>
+              <button class="btn danger" id="tMotorStop">Stopp</button>
+            </div>
+            <div class="kv two">
+              <div><span>Soll Gas</span><b id="tMotorNow">–</b></div>
+              <div><span>ESC-Temperatur</span><b id="tEscNow">–</b></div>
+            </div>
+            <p class="muted small">Bis 100 %, am Stück maximal 10 s. Loslassen stoppt sofort. Propeller muss frei sein.</p>
+          </div>
+
+          <div class="card">
+            <h3>Ruder (Servo)</h3>
+            <div class="slider-row">
+              <label for="tServo">Stellung</label>
+              <input type="range" id="tServo" min="0" max="100" step="1" value="50">
+              <b id="tServoTxt">Mitte</b>
+            </div>
+            <div class="btn-row">
+              <button class="btn" id="tServoL">Links</button>
+              <button class="btn" id="tServoC">Mitte</button>
+              <button class="btn" id="tServoR">Rechts</button>
+              <button class="btn" id="tServoSweep">Schwenktest</button>
+            </div>
+            <p class="muted small">Ohne Rückmeldung: Du siehst nur den Sollwert, die Stellung prüfst du am Boot.</p>
+          </div>
+
+          <div class="card">
+            <h3>Kühlpumpe</h3>
+            <div class="pump">
+              <div class="pump-state" id="tPumpState">–</div>
+              <div class="chips" id="tPumpChips">
+                <button class="chip" data-tp="on">Ein (30 s)</button>
+                <button class="chip" data-tp="off">Aus</button>
+                <button class="chip" data-tp="auto" title="Zurück zur automatischen Steuerung nach ESC-Temperatur">Normal (Auto)</button>
+              </div>
+            </div>
+            <div class="slider-row">
+              <label for="tPumpSpeed">Drehzahl</label>
+              <input type="range" id="tPumpSpeed" min="10" max="100" step="5" value="100">
+              <b id="tPumpSpeedTxt">100 %</b>
+            </div>
+            <div class="kv two">
+              <div><span>Gesamtstrom (alles)</span><b id="tPumpAmp">–</b></div>
+              <div><span>Modus normal</span><b id="tPumpMode">–</b></div>
+            </div>
+            <p class="muted small">Läuft im Test höchstens 30 s am Stück (Trockenlauf vermeiden).</p>
+          </div>
+
+          <div class="card">
+            <h3>Lichter</h3>
+            <div id="tLights"></div>
+            <div class="btn-row">
+              <button class="btn" id="tLightsAll">Alle an</button>
+              <button class="btn" id="tLightsNone">Alle aus</button>
+            </div>
+          </div>
+
+          <div class="card wide">
+            <h3>Messwerte &amp; Test-Protokoll</h3>
+            <div class="tiles" id="tTiles"></div>
+            <table class="tbl" id="tLog"></table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= REPLAY ================= -->
+      <section id="view-replay" class="view">
+        <div class="mission-grid">
+          <div class="card map-card">
+            <div class="map-wrap"><div id="replayMap" class="map"></div></div>
+            <div class="replay-ctl">
+              <button class="btn primary" id="rPlay"><i data-icon="play"></i></button>
+              <input type="range" id="rSlider" min="0" max="100" value="0">
+              <select id="rSpeed">
+                <option value="1">1×</option><option value="4" selected>4×</option><option value="16">16×</option><option value="64">64×</option>
+              </select>
+              <b class="mono" id="rClock">0:00</b>
+            </div>
+          </div>
+          <div class="side">
+            <div class="card">
+              <h3>Fahrten</h3>
+              <p class="notice rec-note" id="recNote" hidden></p>
+              <ul class="trip-list" id="tripList"></ul>
+              <p class="muted small">Eine Fahrt wird automatisch aufgezeichnet, sobald ein Kurs startet, und beim Ende gespeichert.</p>
+            </div>
+            <div class="card">
+              <h3>Fahrt-Daten</h3>
+              <div class="kv" id="tripStats"></div>
+              <div class="btn-row" id="tripBtns">
+                <button class="btn" data-dl="csv">CSV</button>
+                <button class="btn" data-dl="gpx">GPX</button>
+                <button class="btn" data-dl="json">JSON</button>
+                <button class="btn danger" data-dl="del">Löschen</button>
+              </div>
+              <p class="muted small">Download enthält alle Messwerte (1 pro Sekunde).</p>
+            </div>
+            <div class="card">
+              <h3>Werte am Zeitpunkt</h3>
+              <div class="kv">
+                <div><span>Geschwindigkeit</span><b id="rSpd">–</b></div>
+                <div><span>Kurs</span><b id="rHdg">–</b></div>
+                <div><span>Gas / Ruder (Soll)</span><b id="rThr">–</b></div>
+                <div><span>Spannung / Strom</span><b id="rV">–</b></div>
+                <div><span>ESC / Innenraum</span><b id="rEsc">–</b></div>
+                <div><span>Wegpunkt</span><b id="rWp">–</b></div>
+                <div><span>Strecke bisher</span><b id="rDist">–</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= STATUS ================= -->
+      <section id="view-status" class="view">
+        <div class="status-grid">
+          <div class="card">
+            <h3>Verbindung</h3>
+            <div class="kv" id="stConn"></div>
+          </div>
+          <div class="card">
+            <h3>Sensoren &amp; Geräte</h3>
+            <table class="tbl" id="stSensors"></table>
+          </div>
+          <div class="card">
+            <h3>Demo-Auslöser <small class="muted">(nur Mockup)</small></h3>
+            <p class="muted small">Löst Alarme aus, um die Anzeige zu testen.</p>
+            <div class="toggles" id="simToggles"></div>
+          </div>
+          <div class="card wide">
+            <h3>Ereignis-Log</h3>
+            <table class="tbl" id="stLog"></table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+</div>
+
+<div id="toasts" class="toasts"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+<script src="js/state.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/courses.js"></script>
+<script src="js/recorder.js"></script>
+<script src="js/map.js"></script>
+<script src="js/view-live.js"></script>
+<script src="js/view-mission.js"></script>
+<script src="js/view-tests.js"></script>
+<script src="js/view-courses.js"></script>
+<script src="js/view-energy.js"></script>
+<script src="js/view-control.js"></script>
+<script src="js/view-replay.js"></script>
+<script src="js/view-status.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

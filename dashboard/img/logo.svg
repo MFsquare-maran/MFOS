@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100" style="color:#2cb9f5">
+  <title>MFOS</title>
+  <defs>
+    <!-- Luecke zwischen Aufbauten und Rumpf -->
+    <mask id="mfosGap" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="#fff"/>
+      <path d="M5.5 46L50 25L94.5 46L80.5 82H19.5Z" fill="#000" stroke="#000" stroke-width="4.5" stroke-linejoin="round"/>
+    </mask>
+    <!-- Ausschnitte: Fenster, Bullaugen, Bug-Kante -->
+    <mask id="mfosCut" maskUnits="userSpaceOnUse" x="0" y="0" width="100" height="100">
+      <rect width="100" height="100" fill="#fff"/>
+      <g stroke="#000" stroke-width="2.2" stroke-linecap="round"><path d="M29 20.6H37M46 20.6H54M63 20.6H71"/></g>
+      <circle cx="42.7" cy="40" r="2" fill="#000"/><circle cx="57.3" cy="40" r="2" fill="#000"/>
+      <path d="M49.2 26.5H50.8L50 40Z" fill="#000"/>
+    </mask>
+  </defs>
+  <g fill="currentColor" mask="url(#mfosCut)">
+    <g mask="url(#mfosGap)">
+      <rect x="43" y="0" width="14.5" height="7.5" rx="1.2"/>
+      <rect x="34.4" y="6.4" width="31.2" height="8" rx="1.2"/>
+      <rect x="24.2" y="13.4" width="51.8" height="23" rx="1.4"/>
+    </g>
+    <path d="M5.5 46L50 25L94.5 46L80.5 82H19.5Z" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/>
+  </g>
+  <g fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round">
+    <path d="M2.5 88.5q4.8-3.4 9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0"/>
+    <path d="M2.5 97.5q4.8-3.4 9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0t9.6 0"/>
+  </g>
+</svg>
