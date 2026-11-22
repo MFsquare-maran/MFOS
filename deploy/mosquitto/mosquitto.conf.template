@@ -5,7 +5,7 @@
 # TLS macht der vorgeschaltete Reverse Proxy. Dieser Broker spricht nur Klartext und ist
 # deshalb NUR im LAN fuer den Proxy erreichbar (MQTT_BIND), nie direkt aus dem Internet.
 
-per_listener_settings false
+# Anmeldung und Rechte gelten fuer alle Listener gemeinsam (das ist die Voreinstellung).
 
 # ---- Anmeldung und Rechte ----
 # Ohne Benutzername und Passwort kommt niemand rein.
@@ -22,7 +22,8 @@ autosave_interval 300
 persistent_client_expiration 7d
 
 # ---- Schutz vor Missbrauch und Ueberlast ----
-max_connections 100
+# Achtung: max_connections gehoert HINTER einen "listener". Steht es davor, legt Mosquitto
+# einen zusaetzlichen Standard-Listener auf Port 1883 an und es kommt "Address in use".
 max_packet_size 65536
 max_queued_messages 1000
 max_inflight_messages 20
@@ -38,3 +39,4 @@ connection_messages true
 # ---- Listener: MQTT im Klartext, Anmeldung ist trotzdem Pflicht ----
 listener 1883 0.0.0.0
 protocol mqtt
+max_connections 100

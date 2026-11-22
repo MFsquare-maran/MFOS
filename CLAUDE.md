@@ -41,7 +41,7 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 - Die Startskripte (`entrypoint.sh`) **verweigern den Start** bei fehlenden, kurzen (< 20 Zeichen) oder Platzhalter-Passwörtern. Das nicht aufweichen.
 - Haltung der Container: kein Root wo möglich, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem, Speicher- und Prozessgrenzen, kein `docker.sock`, Ports nur an der LAN-Adresse veröffentlichen (`WEB_BIND`, `MQTT_BIND`), nie ins Internet. Neue Dienste bekommen dieselbe Haltung (`x-hardening` in der Compose-Datei).
 - Shell-Skripte und Container-Dateien **mit LF-Zeilenenden** (`.gitattributes` erzwingt es), POSIX-`sh` (Alpine/BusyBox), kein Bash-Spezifisches.
-- Mosquitto-Konfiguration: Kommentare nur in eigenen Zeilen (keine am Zeilenende).
+- Mosquitto-Konfiguration: Kommentare nur in eigenen Zeilen (keine am Zeilenende). Listener-Optionen wie `max_connections` **hinter** den jeweiligen `listener` schreiben, sonst legt Mosquitto einen zusätzlichen Standard-Listener auf Port 1883 an («Address in use»). `per_listener_settings` nicht verwenden (veraltet).
 - Änderungen am Stack sind **ungetestet**, solange kein Docker verfügbar ist. Skripte mit `bash -n` prüfen, `docker-compose.yml` mit YAML-Parser, und ehrlich sagen, dass der Start fehlt.
 - Das Dashboard läuft unter strenger CSP (siehe `deploy/web/Caddyfile`): keine Inline-Skripte, keine neuen Fremd-Domains ohne Eintrag dort.
 
