@@ -3,6 +3,10 @@
 	admin off
 	# HTTPS und Zertifikate macht der vorgeschaltete Reverse Proxy, nicht Caddy
 	auto_https off
+	# Ohne TLS gibt es kein HTTP/2 und HTTP/3 (verhindert die Warnungen im Log)
+	servers {
+		protocols h1
+	}
 }
 
 # Nur im Container erreichbar: Gesundheitspruefung fuer Docker (wird nicht veroeffentlicht)

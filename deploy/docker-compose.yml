@@ -70,7 +70,7 @@ services:
       - "${MQTT_BIND:?MQTT_BIND fehlt (LAN-Adresse dieses Servers, z. B. 192.168.1.20, nie 0.0.0.0)}:${MQTT_PORT:-1883}:1883"
     tmpfs:
       - /run/mosquitto:uid=1883,gid=1883,mode=0700,size=2m,noexec,nosuid
-      - /tmp:size=8m,noexec,nosuid
+      - /tmp:uid=1883,gid=1883,mode=1777,size=8m,noexec,nosuid
     volumes:
       # Gespeicherte Nachrichten und Sitzungen des Brokers (keine Passwoerter) im Datenordner auf dem Server
       - ${DATA_DIR:-/serverdata/server/mfos-dashboard}/mosquitto:/mosquitto/data
@@ -100,9 +100,10 @@ services:
       # Nur an der LAN-Adresse dieses Servers, fuer den Proxy. Nie 0.0.0.0 (kein TLS auf diesem Port).
       - "${WEB_BIND:?WEB_BIND fehlt (LAN-Adresse dieses Servers, z. B. 192.168.1.20, nie 0.0.0.0)}:${WEB_PORT:-8080}:8080"
     tmpfs:
-      - /tmp:size=16m,noexec,nosuid
-      - /data:size=8m,noexec,nosuid
-      - /config:size=8m,noexec,nosuid
+      # Gehoeren dem Benutzer des Containers (10001), sonst kann Caddy dort nichts anlegen
+      - /tmp:uid=10001,gid=10001,mode=1777,size=16m,noexec,nosuid
+      - /data:uid=10001,gid=10001,mode=0700,size=8m,noexec,nosuid
+      - /config:uid=10001,gid=10001,mode=0700,size=8m,noexec,nosuid
     mem_limit: 256m
     healthcheck:
       test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/healthz || exit 1"]
