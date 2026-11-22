@@ -1,0 +1,11 @@
+# Einheitliche Zeilenenden. Shell-Skripte und Container-Dateien MUESSEN LF haben,
+# sonst laufen sie im Linux-Container nicht (auch wenn unter Windows ausgecheckt wird).
+* text=auto
+*.sh text eol=lf
+*.template text eol=lf
+Dockerfile text eol=lf
+Caddyfile text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+.env.example text eol=lf
+*.ps1 text eol=crlf

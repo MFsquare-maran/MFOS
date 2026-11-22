@@ -1,0 +1,18 @@
+# Zugriffsrechte. Alles, was hier nicht erlaubt ist, ist verboten.
+#
+# Der Benutzername eines Boots ist seine Kennung (<id>), also darf es nur
+# mfos/<id>/... benutzen. Ein gestohlenes Boot-Passwort oeffnet nie ein anderes Boot.
+
+pattern write mfos/%u/telemetry
+pattern write mfos/%u/status
+pattern write mfos/%u/event
+pattern write mfos/%u/ack
+pattern read  mfos/%u/cmd
+
+# Backend (laeuft im selben Compose, vertrauenswuerdig): liest und schreibt alles unter mfos/
+user __BACKEND_USER__
+topic readwrite mfos/#
+
+# Healthcheck des Containers: darf nur eine Test-Nachricht senden
+user mfos-health
+topic write mfos/_health

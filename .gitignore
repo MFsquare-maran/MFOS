@@ -5,6 +5,13 @@ firmware/.vscode/c_cpp_properties.json
 firmware/.vscode/launch.json
 firmware/.vscode/ipch
 
+# Server: echte Zugangsdaten gehoeren NIE ins Repository (nur deploy/.env.example)
+deploy/.env
+**/.env
+!**/.env.example
+*.key
+*.pem
+
 # Lokale Claude-Code-Einstellungen (launch.json bleibt im Repo)
 .claude/settings.local.json
 

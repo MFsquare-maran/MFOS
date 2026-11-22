@@ -1,0 +1,9 @@
+# Docker-Build-Kontext schlank halten und keine Geheimnisse mitschicken
+.git
+.claude
+firmware
+docs
+**/.env
+**/*.env
+deploy/.env
+node_modules

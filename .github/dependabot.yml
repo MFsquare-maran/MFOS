@@ -1,0 +1,14 @@
+# Meldet neue Versionen der Basis-Bilder (Caddy, Mosquitto, Alpine) und von Compose, damit
+# der Server nicht mit veralteter Software weiterlaeuft.
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directories:
+      - "/deploy/mosquitto"
+      - "/deploy/web"
+    schedule:
+      interval: "weekly"
+  - package-ecosystem: "docker-compose"
+    directory: "/deploy"
+    schedule:
+      interval: "weekly"

@@ -1,0 +1,5 @@
+
+# ---- Optionaler Listener: MQTT ueber WebSocket (nur wenn MQTT_WEBSOCKETS=true) ----
+# Wird NICHT veroeffentlicht. Der Web-Server reicht ihn unter /mqtt durch. Anmeldung ist Pflicht.
+listener 9001 0.0.0.0
+protocol websockets

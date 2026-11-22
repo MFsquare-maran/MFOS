@@ -1,0 +1,40 @@
+# Wird beim Start aus dieser Vorlage erzeugt (entrypoint.sh ersetzt __RUN__).
+# Nichts in dieser Datei ist geheim: Passwoerter stehen NICHT hier.
+# Achtung: Mosquitto kennt keine Kommentare am Zeilenende, Kommentare nur in eigenen Zeilen.
+#
+# TLS macht der vorgeschaltete Reverse Proxy. Dieser Broker spricht nur Klartext und ist
+# deshalb NUR im Docker-Netz (und auf localhost) erreichbar, nie direkt aus dem Internet.
+
+per_listener_settings false
+
+# ---- Anmeldung und Rechte ----
+# Ohne Benutzername und Passwort kommt niemand rein.
+allow_anonymous false
+# Passwoerter nur als PBKDF2-Hash, erzeugt beim Start.
+password_file __RUN__/passwd
+# Jedes Boot darf nur seine eigenen Topics.
+acl_file __RUN__/acl
+
+# ---- Speicherung ----
+persistence true
+persistence_location /mosquitto/data/
+autosave_interval 300
+persistent_client_expiration 7d
+
+# ---- Schutz vor Missbrauch und Ueberlast ----
+max_connections 100
+max_packet_size 65536
+max_queued_messages 1000
+max_inflight_messages 20
+max_keepalive 120
+
+# ---- Protokoll (stdout, im Container-Log; keine Passwoerter) ----
+log_dest stdout
+log_type error
+log_type warning
+log_type notice
+connection_messages true
+
+# ---- Listener: MQTT im Klartext, Anmeldung ist trotzdem Pflicht ----
+listener 1883 0.0.0.0
+protocol mqtt

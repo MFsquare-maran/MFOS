@@ -9,11 +9,14 @@ firmware/                 PlatformIO, ESP32 (Arduino). pins.h = zentrale Pin-Bel
   lib/<Gerät>/            Treiber, eine Klasse pro Ordner
   src/MAIN/main.cpp       Hauptfirmware      src/TEST/main.cpp  Hardware-Selbsttest
 dashboard/                HTML/CSS/JS ohne Build, Mockup mit Simulation (js/state.js)
+deploy/                   Server als Docker-Compose-Stack für Portainer (siehe unten)
+  docker-compose.yml      mosquitto (MQTT, Klartext), web (Caddy, Passwortschutz, Dashboard), hinter einem Reverse Proxy
+  .env.example            Vorlage der Einstellungen; echte Werte nur in Portainer oder in .env (nie in Git)
 docs/schnittstelle.md     VERTRAG Boot ↔ Dashboard (einzige Quelle der Wahrheit)
 .claude/launch.json       startet das Dashboard in der Vorschau (Name: dashboard, Port 8765)
 ```
 
-Stand: Treiber vorhanden, Dashboard als Mockup fertig, **Firmware kann die Schnittstelle noch nicht** (kein LTE, WLAN, MQTT, scharf/NOT-AUS, Navigation). Siehe `firmware/README.md`.
+Stand: Treiber vorhanden, Dashboard als Mockup fertig, **Firmware kann die Schnittstelle noch nicht** (kein LTE, WLAN, MQTT, scharf/NOT-AUS, Navigation). Siehe `firmware/README.md`. Der Server-Stack in `deploy/` ist geschrieben, aber **nie gestartet** (kein Docker beim Schreiben), ein Backend dahinter gibt es noch nicht.
 
 ## Befehle
 
@@ -27,6 +30,19 @@ pio run -d firmware -e MFOS_test
 ```
 
 Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen (Konsole auf Fehler, betroffene Ansicht durchklicken). Nach Änderungen an JS oder CSS den Browser-Cache umgehen (hartes Neuladen oder `?v=N` an die URL, Dateien mit `fetch(url, {cache: 'reload'})` neu holen), sonst testet man alten Code. Das Browser-Fenster der Vorschau zeigt `file://` nur als Schnappschuss, darum immer über den Server.
+
+## Server (`deploy/`): Konventionen
+
+- **Entschieden:** MQTT auf eigenem **Mosquitto**, kein ThingsBoard. Der Stack läuft **hinter einem Reverse Proxy** unter `mfos.mfsquare.ch`, **TLS macht der Proxy**. Der Stack enthält darum keine Zertifikate, kein Let's Encrypt, keine eigene CA. Das Dashboard ist von aussen erreichbar, darum zählt Sicherheit mehr als Bequemlichkeit.
+- **Klartext-MQTT (Port 1883) nie ins Internet.** Er ist nur im Docker-Netz des Proxys und auf `127.0.0.1` erreichbar, nie auf `0.0.0.0` binden. Das Boot muss über TLS des Proxys kommen (Weg A: Stream mit TLS auf 8883, Weg B: `wss://…/mqtt`, siehe `deploy/README.md`).
+- **Nie Geheimnisse ins Repository:** keine Passwörter, Schlüssel, `.env`, Zertifikate (`.gitignore` und `.dockerignore` schützen, nicht darauf verlassen). In Dateien nur Platzhalter wie `CHANGE_ME_…`. Passwörter erzeugen `deploy/tools/gen-secrets.*`.
+- Alles Einstellbare kommt aus Umgebungsvariablen (`deploy/.env.example` führt jede auf). Neue Variable: in `.env.example`, `docker-compose.yml` (mit `:?` bei Pflicht) und `deploy/README.md` nachziehen.
+- Die Startskripte (`entrypoint.sh`) **verweigern den Start** bei fehlenden, kurzen (< 20 Zeichen) oder Platzhalter-Passwörtern. Das nicht aufweichen.
+- Haltung der Container: kein Root wo möglich, `cap_drop: ALL`, `no-new-privileges`, schreibgeschütztes Dateisystem, Speicher- und Prozessgrenzen, kein `docker.sock`, keine Ports ins Internet veröffentlichen (nur `127.0.0.1` und das Proxy-Netz). Neue Dienste bekommen dieselbe Haltung (`x-hardening` in der Compose-Datei).
+- Shell-Skripte und Container-Dateien **mit LF-Zeilenenden** (`.gitattributes` erzwingt es), POSIX-`sh` (Alpine/BusyBox), kein Bash-Spezifisches.
+- Mosquitto-Konfiguration: Kommentare nur in eigenen Zeilen (keine am Zeilenende).
+- Änderungen am Stack sind **ungetestet**, solange kein Docker verfügbar ist. Skripte mit `bash -n` prüfen, `docker-compose.yml` mit YAML-Parser, und ehrlich sagen, dass der Start fehlt.
+- Das Dashboard läuft unter strenger CSP (siehe `deploy/web/Caddyfile`): keine Inline-Skripte, keine neuen Fremd-Domains ohne Eintrag dort.
 
 ## Dashboard: Konventionen
 
@@ -51,7 +67,7 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 
 ## Schnittstelle (Kurzfassung, Details in `docs/schnittstelle.md`)
 
-Transport: **MQTT 3.1.1 über TLS, JSON**. Backend offen (eigener Broker mit schlankem Backend wahrscheinlicher als ThingsBoard). Topics `mfos/<id>/telemetry|status|event|cmd|ack`.
+Transport: **MQTT 3.1.1 über TLS, JSON**, Broker Mosquitto (`deploy/`), TLS beendet der Reverse Proxy (`mfos.mfsquare.ch`, Port 8883 oder `wss` auf 443 unter `/mqtt`). Topics `mfos/<id>/telemetry|status|event|cmd|ack`. Das Boot meldet sich mit Benutzername = Kennung und starkem Passwort an, **prüft das Zertifikat** (Let's Encrypt, festgelegtes Wurzelzertifikat) und braucht dafür die richtige Uhrzeit. Ein Boot darf nur seine eigenen Topics.
 
 **Die Firmware muss senden:**
 
@@ -87,6 +103,8 @@ Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-P
 4. Befehle verfallen (`ttl_ms`), nach Verbindungsabbruch wird nichts nachgeholt.
 5. Alle Schranken gelten im Boot. Das Dashboard darf sie anzeigen, nie allein darauf verlassen.
 6. WLAN-Passwörter nie anzeigen, protokollieren oder zurücksenden.
+7. Die Firmware verbindet nie ohne Prüfung des Serverzertifikats (kein «unsicher»-Modus), auch nicht zum Testen.
+8. Keine Zugangsdaten, Schlüssel oder `.env` ins Repository.
 
 ## Regeln für die Arbeit hier
 
@@ -98,7 +116,7 @@ Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-P
 
 ## Offene Entscheidungen
 
-1. **Backend:** Mosquitto/EMQX plus eigenes schlankes Backend (Speicherung, Fahrten, Kurse, Befehle mit Verfall, Anmeldung) oder ThingsBoard. Siehe `README.md`.
+1. **Backend** hinter Mosquitto: Speicherung, Fahrten, Kurse, Befehle mit Verfall, Anmeldung mit Zweitfaktor. (ThingsBoard ist entschieden **nicht**.) Bis dahin zeigt das Dashboard nur Simulation und sollte nicht mit echten Daten betrieben werden.
 2. **UART:** ESP32 hat 3 UARTs (USB, GPS, SBUS), das LTE-Modem wäre die vierte. `pins.h` nennt UART1 für das Modem, `RcReceiver` nutzt standardmässig UART1.
 3. **Vollgas-Geschwindigkeit** (Dashboard nimmt 14 km/h bei 100 % Gas an) messen und als Parameter einführen.
 4. Aktion bei Geofence-Verlassen, kritischem Akku, kritischer ESC-Temperatur.

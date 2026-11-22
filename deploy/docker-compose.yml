@@ -1,0 +1,106 @@
+# MFOS Server: Mosquitto (MQTT) und Web-Server mit Passwortschutz, HINTER einem Reverse Proxy.
+#
+# TLS (Zertifikate, HTTPS) macht der vorgeschaltete Reverse Proxy, nicht dieser Stack.
+# Darum veroeffentlicht dieser Stack KEINEN Port ins Internet: Der Proxy erreicht die Dienste
+# ueber ein gemeinsames Docker-Netz (PROXY_NETWORK) oder ueber Ports auf localhost.
+#
+# Gedacht fuer Portainer (Stack aus dem Git-Repository), geht aber auch mit
+#   docker compose --env-file .env up -d --build
+# Alle Einstellungen kommen aus Umgebungsvariablen (siehe .env.example).
+# Es stehen KEINE Passwoerter in dieser Datei.
+
+name: mfos
+
+# Gemeinsame Haertung fuer alle Container
+x-hardening: &hardening
+  restart: unless-stopped
+  init: true
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  pids_limit: 200
+  logging:
+    driver: json-file
+    options:
+      max-size: "10m"
+      max-file: "3"
+
+services:
+
+  # MQTT-Broker: Anmeldung Pflicht, Rechte pro Boot. Spricht Klartext (TLS macht der Proxy).
+  mosquitto:
+    <<: *hardening
+    build:
+      context: ./mosquitto
+    image: mfos-mosquitto:local
+    container_name: mfos-mosquitto
+    user: "1883:1883"
+    environment:
+      MQTT_BOAT_USER: ${MQTT_BOAT_USER:-mfos-1}
+      MQTT_BOAT_PASSWORD: ${MQTT_BOAT_PASSWORD:?MQTT_BOAT_PASSWORD fehlt}
+      MQTT_BACKEND_USER: ${MQTT_BACKEND_USER:-mfos-backend}
+      MQTT_BACKEND_PASSWORD: ${MQTT_BACKEND_PASSWORD:?MQTT_BACKEND_PASSWORD fehlt}
+      MQTT_WEBSOCKETS: ${MQTT_WEBSOCKETS:-false}
+    ports:
+      # Nur auf localhost. NIEMALS auf 0.0.0.0 stellen, wenn der Server aus dem Internet erreichbar ist:
+      # Auf diesem Port gibt es kein TLS, Passwoerter gingen im Klartext durchs Netz.
+      - "${MQTT_BIND:-127.0.0.1}:${MQTT_PORT:-1883}:1883"
+    networks:
+      - default
+      - proxy
+    tmpfs:
+      - /run/mosquitto:uid=1883,gid=1883,mode=0700,size=2m,noexec,nosuid
+      - /tmp:size=8m,noexec,nosuid
+    volumes:
+      - mosquitto_data:/mosquitto/data
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_pub -h 127.0.0.1 -p 1883 -u mfos-health -P \"$$(cat /run/mosquitto/health.pass)\" -t mfos/_health -m ok -q 1 >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Web-Server: Passwortschutz, Sicherheits-Header, Dashboard; optional MQTT ueber WebSocket unter /mqtt
+  web:
+    <<: *hardening
+    build:
+      context: ..
+      dockerfile: deploy/web/Dockerfile
+    image: mfos-web:local
+    container_name: mfos-web
+    user: "10001:10001"
+    depends_on:
+      - mosquitto
+    environment:
+      DASHBOARD_USER: ${DASHBOARD_USER:?DASHBOARD_USER fehlt}
+      DASHBOARD_PASSWORD: ${DASHBOARD_PASSWORD:?DASHBOARD_PASSWORD fehlt}
+    ports:
+      # Nur auf localhost (fuer einen Proxy auf demselben Rechner). Ein Proxy im Docker-Netz braucht das nicht.
+      - "${WEB_BIND:-127.0.0.1}:${WEB_PORT:-8080}:8080"
+    networks:
+      - default
+      - proxy
+    tmpfs:
+      - /tmp:size=16m,noexec,nosuid
+      - /data:size=8m,noexec,nosuid
+      - /config:size=8m,noexec,nosuid
+    mem_limit: 256m
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:8081/healthz || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+networks:
+  # Gemeinsames Netz mit deinem Reverse Proxy. Muss vorher existieren (docker network create proxy)
+  # oder den Namen des Netzes deines Proxys tragen (PROXY_NETWORK).
+  proxy:
+    name: ${PROXY_NETWORK:-proxy}
+    external: true
+
+volumes:
+  mosquitto_data:

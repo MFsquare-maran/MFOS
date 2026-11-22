@@ -23,6 +23,7 @@ Ein **Modellboot mit Elektronik**, das autonom fahren kann: Man gibt ihm Koordin
 |---|---|
 | `firmware/` | PlatformIO-Projekt für den ESP32 (Hauptfirmware, Hardware-Selbsttest, Treiber). Siehe `firmware/README.md`. |
 | `dashboard/` | Web-Dashboard ohne Build-Schritt (HTML, CSS, JavaScript). Siehe `dashboard/README.md`. |
+| `deploy/` | **Server als Docker-Compose-Stack** (Mosquitto, Web-Server mit Passwortschutz) hinter einem Reverse Proxy, der TLS macht (`mfos.mfsquare.ch`). Für Portainer gedacht. Siehe `deploy/README.md`. |
 | `docs/schnittstelle.md` | **Vertrag zwischen Boot und Dashboard**: was die Firmware senden und empfangen können muss. |
 | `CLAUDE.md` | Arbeitsanweisungen für Claude Code in diesem Projekt. |
 | `.claude/launch.json` | Startet das Dashboard in der Vorschau von Claude Code. |
@@ -73,7 +74,8 @@ In VS Code den Ordner `firmware/` als PlatformIO-Projekt öffnen.
 | Navigation (Wegpunkte abfahren, Return Home, Geofence) | **fehlt** |
 | Scharf schalten, NOT-AUS, Testmodus, Befehls-Verfall | **fehlt** in der Firmware, im Dashboard als Simulation fertig |
 | Dashboard | fertig als Mockup: Live, Mission, Kurse, Telemetrie, Einstellungen, Tests, Replay, Status |
-| Backend (Speicherung, Aufzeichnung, Anmeldung) | **fehlt**, Entscheidung offen |
+| Server: MQTT-Broker (Mosquitto, Rechte pro Boot) und passwortgeschützter Web-Server, TLS durch den Reverse Proxy | in `deploy/` geschrieben, **noch nicht gestartet** (kein Docker beim Schreiben) |
+| Backend (Speicherung, Aufzeichnung, Befehle mit Verfallszeit, Anmeldung) | **fehlt** |
 
 ## Sicherheit
 
@@ -87,6 +89,7 @@ Ein Modellboot mit Propeller kann verletzen. Grundsätze, die im Dashboard gezei
 
 ## Offene Entscheidungen
 
-1. **Transport und Backend.** Der Transport ist **MQTT** (klein, passt zu LTE, Last Will, Wiederverbinden). Ob dahinter **ThingsBoard** oder ein **eigener Broker mit schlankem Backend** steht, ist offen. Meine Einschätzung heute: Weil das Dashboard eine eigene Oberfläche ist, nutzt man von ThingsBoard nur Broker, Datenbank und Schnittstelle, und das Wichtige muss man trotzdem selbst bauen: Fahrten-Aufzeichnung, Kursverwaltung, Downloads und vor allem Befehle mit Verfallszeit (ThingsBoard kann Befehle für ein Gerät aufbewahren und später ausführen, das wollen wir bei Antrieb und Start nicht). Der Totmann-Motortest braucht zudem einen schnellen eigenen Datenstrom. Deshalb würde ich **Mosquitto (oder EMQX) plus ein schlankes eigenes Backend** bevorzugen. Die Schnittstelle in `docs/schnittstelle.md` ist transportunabhängig, ThingsBoard bliebe über einen Adapter möglich.
+1. **Backend.** Entschieden: Transport ist **MQTT** (verschlüsselt durch den Reverse Proxy) auf einem eigenen **Mosquitto**-Broker (`deploy/`), **ohne ThingsBoard**. Gründe: Das Dashboard ist eine eigene Oberfläche, von ThingsBoard hätte man nur Broker und Datenbank genutzt. Fahrten-Aufzeichnung, Kursverwaltung, Downloads und vor allem **Befehle mit Verfallszeit** (ThingsBoard kann Befehle für ein Gerät aufbewahren und später ausführen, das wollen wir bei Antrieb und Start nicht) müssten trotzdem selbst gebaut werden, und der Totmann-Motortest braucht einen schnellen eigenen Datenstrom. **Offen** ist das schlanke eigene Backend dahinter (Zeitreihen und Fahrten speichern, Kurse, Befehle, Anmeldung).
 2. **UART-Belegung.** Der ESP32 hat drei UARTs: USB-Debug, GPS und die Fernsteuerung. Das LTE-Modem braucht eine vierte. `pins.h` nennt für das Modem UART1, die SBUS-Klasse nutzt standardmässig ebenfalls UART1. Das muss vor der Modem-Anbindung gelöst werden (zum Beispiel GPS über eine Software-UART, 9600 Baud).
-3. Weitere Punkte stehen in `docs/schnittstelle.md`, Abschnitt 13.
+3. **MQTT-Weg hinter dem Proxy.** TLS macht der Reverse Proxy. Für das Boot gibt es zwei Wege: **A** TCP-Stream mit TLS auf Port 8883 (setzt voraus, dass der Proxy TLS für Streams kann) oder **B** MQTT über WebSocket (`wss://mfos.mfsquare.ch/mqtt`, setzt einen MQTT-Client mit WebSocket-Unterstützung in der Firmware voraus). Entscheiden, bevor die Firmware ihren MQTT-Teil bekommt. Details in `deploy/README.md`.
+4. Weitere Punkte stehen in `docs/schnittstelle.md`, Abschnitt 13.

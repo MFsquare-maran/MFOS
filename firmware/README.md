@@ -49,7 +49,8 @@ Bibliotheken von aussen: Adafruit PWM Servo Driver, BMP280, ADS1X15, Unified Sen
 |---|---|
 | LTE-Modem A7670E ansteuern (Pins sind definiert) | fehlt |
 | WLAN, Umschaltung LTE ↔ WLAN, Zugangsdaten im Flash | fehlt |
-| MQTT-Client, Telemetrie, Befehle, Quittungen, Ereignisse | fehlt |
+| MQTT-Client über **TLS** zu `mfos.mfsquare.ch` (Port 8883 oder `wss` auf 443, siehe `../deploy/README.md`), Zertifikat gegen ein festgelegtes Wurzelzertifikat (Let's Encrypt, z. B. ISRG Root X1) prüfen, nie unsicher verbinden. Benutzername = Boots-Kennung, Last Will, Wiederverbinden. Dazu die richtige Uhrzeit vor dem Verbinden (GPS, Netzzeit oder NTP) | fehlt |
+| Telemetrie, Befehle, Quittungen, Ereignisse (Nachrichtenformat in `../docs/schnittstelle.md`) | fehlt |
 | Zustandsautomat mit scharf/nicht scharf, NOT-AUS, Modi | fehlt |
 | Failsafe bei Funk- oder Verbindungsverlust | fehlt (Signalverlust des Senders wird nur ausgegeben) |
 | Navigation: Wegpunkte, Return Home, Geofence, Tempo- und Gasgrenze | fehlt |

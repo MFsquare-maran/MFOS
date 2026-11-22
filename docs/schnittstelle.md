@@ -12,9 +12,25 @@ Dieses Dokument ist die **einzige Quelle der Wahrheit** für alles, was zwischen
 4. **Einheiten:** Geschwindigkeit in **km/h**, Winkel in **Grad**, Temperatur in **°C**, Druck in **hPa**, Strom **A**, Spannung **V**, Leistung **W**, Ladung **mAh**, Energie **Wh**, Datenvolumen **MB**. Zeit als **UTC in Millisekunden seit 1970** (`t`). Die Anzeige in m/s rechnet nur das Dashboard.
 5. **Sollwerte sind keine Rückmeldung.** `cmd_throttle` und `cmd_rudder` sind das, was das Boot an ESC und Servo ausgibt. Eine Stellungsrückmeldung der Aktoren gibt es nicht.
 
-## 2. Transport (Entscheidung offen)
+## 2. Transport
 
-Vorgesehen ist **MQTT 3.1.1 über TLS**. Ob ein eigener Broker mit schlankem Backend oder ThingsBoard dahinter steht, ist noch nicht entschieden (Abschnitt 13). Diese Schnittstelle ist deshalb unabhängig davon beschrieben: Topics und JSON-Nutzdaten. Mit ThingsBoard würde ein Adapter die Topics auf dessen Geräte-API abbilden.
+**MQTT 3.1.1 über TLS** auf einem eigenen **Mosquitto**-Broker (entschieden; ThingsBoard wird nicht verwendet). Der Broker läuft im Docker-Stack `deploy/` hinter einem **Reverse Proxy** (Domain `mfos.mfsquare.ch`). **Den TLS-Teil übernimmt der Proxy**, der Broker selbst spricht nur Klartext und ist nie direkt aus dem Internet erreichbar. Siehe `deploy/README.md`. Ein schlankes eigenes Backend (Speicherung, Fahrten, Kurse, Befehle mit Verfallszeit) kommt später dazu und spricht mit dem Broker; es ist noch nicht gebaut.
+
+**Verbindung des Boots (Pflicht für die Firmware):**
+
+| Punkt | Vorgabe |
+|---|---|
+| Server und Port | `mfos.mfsquare.ch`. **Weg A:** Port **8883** mit TLS (der Proxy beendet TLS und leitet an Mosquitto). **Weg B:** Port **443**, `wss`, Pfad `/mqtt` (MQTT über WebSocket). Welcher Weg gilt, ist noch zu entscheiden (`deploy/README.md`). |
+| Serverprüfung | Die Firmware prüft das Zertifikat des Proxys (Let's Encrypt) gegen ein festgelegtes Wurzelzertifikat (zum Beispiel **ISRG Root X1**) und verbindet **nie** ohne Prüfung. Der Hostname muss genau `mfos.mfsquare.ch` sein. Die Kette, die der Proxy ausliefert, ist vorher zu prüfen. |
+| Anmeldung | Benutzername = Boots-Kennung `<id>`, Passwort = zufällig, mindestens 20 Zeichen. Kein anonymer Zugang. |
+| Uhrzeit | Die TLS-Prüfung braucht die richtige Zeit (Gültigkeitszeitraum des Zertifikats). Das Boot holt sie vor dem Verbinden aus GPS, Netzzeit oder NTP. |
+| Client-ID | Gleich der Boots-Kennung. |
+| Last Will | Topic `mfos/<id>/status`, Nutzlast `{"online": false}`, retained, QoS 1. Beim Verbinden meldet das Boot `{"online": true}` retained. |
+| Wiederverbinden | Mit wachsender Wartezeit (1 s bis 60 s), damit ein Fehler den Broker nicht überlastet. |
+
+Rechte (ACL im Broker): Ein Boot darf **nur** `mfos/<id>/telemetry`, `status`, `event`, `ack` schreiben und `mfos/<id>/cmd` lesen. Mehr geht nicht, auch nicht für ein anderes Boot.
+
+Diese Schnittstelle ist so beschrieben (Topics und JSON), dass sie nicht an einen bestimmten Server gebunden ist.
 
 Topics, `<id>` ist die Boots-Kennung, zum Beispiel `mfos-1`:
 
@@ -232,11 +248,14 @@ Das muss das Boot **nicht** liefern:
 
 ## 13. Offene Punkte
 
-1. **Transport und Backend:** eigener Broker mit schlankem Backend oder ThingsBoard. Antwort und Gründe stehen in `README.md`, Abschnitt «Offene Entscheidungen».
+1. **Backend:** Der Broker steht (Mosquitto, `deploy/`). Offen ist das Backend dahinter: Speicherung der Zeitreihen, Fahrten und Kurse auf dem Server, Befehle mit Verfallszeit, Benutzer und Anmeldung für das Dashboard, Anbindung des Dashboards (WebSocket oder REST).
 2. **Vollgas-Geschwindigkeit:** Das Dashboard nimmt 14 km/h bei 100 % Gas an (für «wirksames Tempo»). Der echte Wert ist zu messen und sollte ein Parameter werden (`topSpeed`).
 3. **Geofence-Aktion:** Was tut das Boot beim Verlassen: stoppen, Return Home oder nur warnen?
 4. **Aktion bei kritischem Akku oder ESC:** `battCrit`, `escCrit`.
 5. **«Position halten»:** Dein ESC fährt nur vorwärts; ein echtes Halten ist damit grob (Pulsen um den Punkt). Vorschlag: Option streichen.
 6. **Datenmenge bei 100 ms:** rund 4,6 kB/s je 460-Byte-Nachricht, also etwa 400 MB pro Tag über LTE. Dafür Bündeln mehrerer Messwerte oder ein kompaktes Format prüfen.
-7. **Benutzer und Anmeldung** im Dashboard, wenn es von aussen erreichbar sein soll.
-8. **Mehrere Boote:** Die Topics tragen schon eine Kennung, das Dashboard kennt aber nur eines.
+7. **Anmeldung im Dashboard:** Heute ein Passwort per HTTP Basic Auth (ohne Zweitfaktor). Mit echten Daten und Befehlen braucht es mehr (Zweitfaktor oder VPN), siehe `deploy/README.md`.
+8. **Mehrere Boote:** Die Topics tragen schon eine Kennung. Der Stack kennt aber einen Boot-Benutzer und das Dashboard nur ein Boot.
+9. **Zertifikat je Boot (mTLS)** statt Passwort im Flash, als spätere Verschärfung.
+10. **TLS über das LTE-Modem:** Ob TLS auf dem A7670E (AT-Befehle) oder im ESP32 (über die Modem-Verbindung) läuft, ist nicht entschieden und nicht geprüft.
+11. **Weg A oder B für MQTT** (TCP-Stream mit TLS im Proxy oder WebSocket über HTTPS). Weg B braucht in der Firmware einen MQTT-Client mit WebSocket-Unterstützung. Vor dem Bau der Firmware-Anbindung entscheiden.

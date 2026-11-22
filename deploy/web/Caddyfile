@@ -1,0 +1,52 @@
+{
+	# Verwaltungs-Schnittstelle ausschalten (nicht noetig, weniger Angriffsflaeche)
+	admin off
+	# HTTPS und Zertifikate macht der vorgeschaltete Reverse Proxy, nicht Caddy
+	auto_https off
+}
+
+# Nur im Container erreichbar: Gesundheitspruefung fuer Docker (wird nicht veroeffentlicht)
+http://127.0.0.1:8081 {
+	bind 127.0.0.1
+	respond /healthz "ok" 200
+}
+
+# Das Dashboard. Der Reverse Proxy leitet https://<domain> hierher (Port 8080, ohne TLS).
+:8080 {
+	encode zstd gzip
+
+	header {
+		# Browser dauerhaft auf HTTPS festlegen (der Browser sieht die HTTPS-Adresse des Proxys)
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
+		Cross-Origin-Opener-Policy "same-origin"
+		Cross-Origin-Resource-Policy "same-origin"
+		# Skripte nur von hier und von cdnjs; Karten-Kacheln von Esri; keine fremden Frames, keine Formulare nach aussen
+		Content-Security-Policy "default-src 'self'; script-src 'self' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; img-src 'self' data: blob: https://server.arcgisonline.com https://cdnjs.cloudflare.com; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+		Cache-Control "no-cache"
+		-Server
+	}
+
+	request_body {
+		max_size 1MB
+	}
+
+	# Optional: MQTT ueber WebSocket fuer das Boot (wss://<domain>/mqtt). Ohne Passwort des Dashboards,
+	# denn das Boot meldet sich mit seinen MQTT-Zugangsdaten an. Ist MQTT_WEBSOCKETS aus, kommt hier ein Fehler 502.
+	handle /mqtt* {
+		uri strip_prefix /mqtt
+		reverse_proxy mosquitto:9001
+	}
+
+	# Alles andere (das Dashboard) hinter dem Passwort
+	handle {
+		basic_auth {
+			{$DASHBOARD_USER} {$DASHBOARD_HASH}
+		}
+		root * /srv
+		file_server
+	}
+}
