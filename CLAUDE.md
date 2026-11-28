@@ -56,7 +56,7 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 - Zeichnen bei jedem `tick` (1 Hz) nur, was sich ändert. Eingabefelder mit Fokus nicht überschreiben, Knöpfe nicht neu erzeugen, solange der Nutzer sie drückt.
 - Karten: Esri-Kacheln (OpenStreetMap-Kacheln sind für diese App gesperrt, 403). Das Boot-Symbol passt sich der Karte an (`.map-dark`, `.map-light`, `.map-sat`).
 - Hell und Dunkel über CSS-Variablen in `css/style.css`. Neue Farben als Variable anlegen.
-- Das Dashboard soll auf Desktop **und** Handy funktionieren (Navigation unten ab 760 px).
+- Das Dashboard soll auf Desktop, Tablet **und** Handy funktionieren (Navigation unten ab 760 px). **Die Seite Live füllt das Fenster ohne Scrollen** (Querformat: Karte links, Seitenspalte mit Tabs Übersicht/Details/Einstellungen rechts; Hochformat: Karte oben, Spalte unten; Karte folgt per `ResizeObserver`). Die Top-Leiste klappt weniger wichtige Werte hinter «Mehr» ein (bis 1700 px Breite oder unter 820 px Höhe). Neue Elemente auf Live gehören in einen Tab oder müssen ohne Scrollen passen. Nach Layout-Änderungen mehrere Fenstergrössen prüfen (1920×1080, 1366×768, 1024×768, 768×1024, 375×812, 812×375).
 
 ## Firmware: Konventionen
 

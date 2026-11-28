@@ -206,6 +206,14 @@
   $('#themeBtn').addEventListener('click', () => setTheme(M.theme() === 'dark' ? 'light' : 'dark'));
 
   /* ---------- Navigation ---------- */
+  /* Top-Leiste: auf kleinen Fenstern liegen die weniger wichtigen Werte hinter «Mehr» */
+  $('#tbMore').addEventListener('click', e => {
+    e.stopPropagation();
+    const t = $('.topbar'), on = !t.classList.contains('more');
+    $('#tbSec').style.top = Math.round(t.getBoundingClientRect().bottom + 4) + 'px';
+    t.classList.toggle('more', on); $('#tbMore').setAttribute('aria-expanded', on); $('#tbMore').textContent = on ? 'Weniger ▴' : 'Mehr ▾';
+  });
+  document.addEventListener('click', e => { const t = $('.topbar'); if (t.classList.contains('more') && !e.target.closest('.tb-secbox')) { t.classList.remove('more'); $('#tbMore').textContent = 'Mehr ▾'; $('#tbMore').setAttribute('aria-expanded', false); } });
   M.showView = function (id) {
     if (!$('#view-' + id)) id = 'live';
     $$('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + id));

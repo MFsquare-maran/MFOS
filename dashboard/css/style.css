@@ -430,3 +430,91 @@ details.tune-card[open] > summary { margin-bottom: 8px; }
 
 .tune-gps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 12px; color: var(--muted); }
 .tune-gps select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }
+
+/* ===== Live: die Frontseite füllt das Fenster, ohne Scrollen =====
+   Querformat: Karte links, Seitenspalte rechts (Tabs). Hochformat: Karte oben, Spalte unten.
+   Die Kartengrösse folgt dem Fenster (ResizeObserver in view-live.js). */
+main:has(#view-live.active) { overflow: hidden; padding: 10px 12px; }
+#view-live.active { display: block; height: 100%; }
+#view-live .live-grid { height: 100%; grid-template-columns: minmax(0, 1fr) clamp(300px, 34vw, 440px); grid-template-rows: minmax(0, 1fr); gap: 12px; }
+#view-live .map-card { position: static; height: 100%; min-height: 0; }
+#view-live .map-wrap { flex: 1 1 auto; min-height: 0; }
+#view-live .map { height: 100%; min-height: 0; }
+#view-live .map-tools { padding: 6px 12px; gap: 6px 14px; }
+#view-live .actionbar { grid-template-columns: repeat(auto-fit, minmax(112px, 1fr)); gap: 6px; padding: 8px 10px 10px; }
+#view-live .actionbar .btn { padding: 8px 6px; font-size: 12.5px; line-height: 1.15; text-align: center; white-space: normal; }
+#view-live .actionbar .arm, #view-live .actionbar #btnEstop { grid-column: auto; }
+#view-live .actionbar .soft-row { grid-column: 1 / -1; order: 10; }
+
+.live-side { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+.side-card { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; padding: 6px 10px 10px; container-type: inline-size; }
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+.tab { flex: 1; padding: 8px 4px; background: none; border: 0; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; font-size: 13px; }
+.tab:hover { color: var(--text); }
+.tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-pane { display: none; flex: 1 1 auto; min-height: 0; overflow: auto; }
+.tab-pane.active { display: flex; flex-direction: column; gap: 8px; }
+.ov-main, .ov-side { display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+.ov-side { flex: 1 1 auto; }
+.ov-main .stat-row { margin-bottom: 0; }
+.ov-main .stat.big b { font-size: clamp(20px, 3.4vh, 28px); }
+.ov-main .kv > div { padding: 3px 0; }
+.ov-side .inst { flex: 1 1 90px; min-height: 70px; margin: 0; grid-template-rows: minmax(0, 1fr); }
+.ov-side .inst svg { width: 100%; max-width: none; height: 100%; min-height: 0; }
+.ov-side .kv.two > div { padding: 2px 0; }
+.ov-side .bar-row { margin: 3px 0; }
+@container (min-width: 560px) {
+  .tab-pane.ov.active { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-content: stretch; }
+  .ov-side .inst { min-height: 110px; }
+}
+@media (max-aspect-ratio: 1/1), (max-width: 600px) {
+  #view-live .live-grid { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(250px, 54%) minmax(0, 1fr); }
+}
+@media (max-width: 480px) and (min-aspect-ratio: 1/2) {
+  #view-live .live-grid { grid-template-rows: minmax(270px, 58%) minmax(0, 1fr); }
+}
+
+/* Top-Leiste: auf kleinen Fenstern liegen die weniger wichtigen Werte hinter «Mehr» */
+.tb-secbox { display: contents; }
+#tbMore { display: none; }
+@media (max-width: 1700px), (max-height: 820px) {
+  #tbMore { display: inline-flex; }
+  .tb-secbox { display: none; position: fixed; top: 48px; right: 10px; z-index: 2000; flex-wrap: wrap; gap: 6px; padding: 8px; max-width: min(560px, calc(100vw - 20px)); background: var(--panel2); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow); }
+  .topbar.more .tb-secbox { display: flex; }
+  .topbar { position: relative; padding: 6px 12px; gap: 10px; }
+  .tb-title small { display: none; }
+  .pill { padding: 3px 9px; font-size: 12px; }
+}
+
+/* sehr niedrige Fenster (Handy quer) */
+@media (max-height: 560px) {
+  .brand { display: none; }
+  .nav { overflow-y: auto; padding: 4px; }
+  .nav-item { padding: 6px 2px; }
+  .nav-item span { font-size: 9px; }
+  #view-live .map-tools { display: none; }
+  main:has(#view-live.active) { padding: 6px 8px; }
+}
+
+/* Handy hoch und niedrige Fenster: Top-Leiste als eine Zeile, Aktionsknöpfe kompakt */
+@media (max-width: 760px), (max-height: 560px) {
+  .topbar { flex-wrap: nowrap; }
+  .tb-title { display: none; }
+  .tb-items { flex-wrap: nowrap; overflow-x: auto; margin-left: 0; flex: 1; min-width: 0; scrollbar-width: none; }
+  .tb-items::-webkit-scrollbar { display: none; }
+  #view-live .actionbar { grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); }
+}
+@media (max-height: 560px) {
+  #view-live .actionbar { grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 4px; padding: 5px 6px 6px; }
+  #view-live .actionbar .btn { font-size: 11px; padding: 6px 3px; }
+  #view-live .actionbar .btn i { display: none; }
+  .tab { padding: 6px 2px; }
+}
+
+@media (max-width: 600px) {
+  #view-live .map-tools { flex-wrap: nowrap; overflow-x: auto; white-space: nowrap; scrollbar-width: none; }
+  #view-live .actionbar { grid-template-columns: repeat(4, 1fr); gap: 4px; padding: 6px 8px 8px; }
+  #view-live .actionbar .btn { font-size: 11.5px; padding: 7px 3px; }
+  #view-live .actionbar .btn i { display: none; }
+}
+.tb-title strong { white-space: nowrap; }

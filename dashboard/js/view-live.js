@@ -57,6 +57,7 @@
     trackLine.setLatLngs(s.track.map(p => [p.lat, p.lon]));
     map.on('dragstart', () => { follow = false; $('#followChk').checked = false; });
     drawMission();
+    if (window.ResizeObserver) new ResizeObserver(() => { if (M.currentView === 'live') map.invalidateSize(); }).observe($('#liveMap'));   // Karte folgt jeder Fenstergrösse
   }
   function drawMission() {
     if (!map) return;
@@ -219,6 +220,17 @@
   $('#radiusChk').addEventListener('change', e => { if (map) e.target.checked ? radiusGroup.addTo(map) : radiusGroup.remove(); });
   $('#fenceChk').addEventListener('change', e => { if (map) e.target.checked ? fence.addTo(map) : fence.remove(); });
   $('#btnStart').addEventListener('click', () => M.actions.start());
+  /* Seitenspalte: Tabs (Übersicht bleibt ohne Scrollen sichtbar) */
+  let liveTab = 'ov'; try { liveTab = localStorage.getItem('mfos-live-tab') || 'ov'; } catch (e) { /* ignore */ }
+  function showLiveTab(t) {
+    if (!$(`[data-pane="${t}"]`)) t = 'ov';
+    liveTab = t;
+    document.querySelectorAll('#liveTabs .tab').forEach(b => { b.classList.toggle('active', b.dataset.tab === t); b.setAttribute('aria-selected', b.dataset.tab === t); });
+    document.querySelectorAll('.live-side .tab-pane').forEach(p => p.classList.toggle('active', p.dataset.pane === t));
+    try { localStorage.setItem('mfos-live-tab', t); } catch (e) { /* ignore */ }
+  }
+  $('#liveTabs').addEventListener('click', e => { const b = e.target.closest('.tab'); if (b) showLiveTab(b.dataset.tab); });
+  showLiveTab(liveTab);
   $('#btnManual').addEventListener('click', () => M.actions.manual());
   $('#btnSoft').addEventListener('click', () => M.actions.soft());
 

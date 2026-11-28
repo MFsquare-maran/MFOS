@@ -63,7 +63,6 @@
         <div class="pill" id="tbArm" title="Scharf = Antrieb für Mission und Return Home freigegeben"><i data-icon="lock"></i><span>–</span></div>
         <div class="pill" id="tbMode"><span>–</span></div>
         <div class="pill" id="tbLte" title="Aktive Verbindung"><span class="lbl" id="tbLinkLbl">LTE</span><span class="bars" id="tbLteBars"><i></i><i></i><i></i><i></i></span><span id="tbLteTxt">–</span></div>
-        <div class="pill" id="tbData" title="LTE-Datenverbrauch seit dem letzten Reset (Schätzung)"><span class="lbl">LTE-Daten</span><span>–</span></div>
         <div class="pill" id="tbGps" title="GPS-Satelliten"><i data-icon="sat"></i><span>–</span></div>
         <div class="pill" id="tbBat" title="Akku">
           <svg class="batt" viewBox="0 0 30 15" aria-hidden="true">
@@ -71,14 +70,18 @@
             <rect x="26.6" y="4.8" width="2.4" height="5.4" rx="1.1" fill="currentColor"/>
             <rect id="tbBatFill" x="2.6" y="2.6" width="21.3" height="9.8" rx="1.6"/>
           </svg><span>–</span></div>
-        <div class="pill" id="tbCur" title="Strom und Leistung (alles zusammen)"><span class="lbl">Strom</span><span>–</span></div>
-        <div class="pill" id="tbUsed" title="Seit dem letzten Zurücksetzen verbrauchte Energie"><span class="lbl">Verbraucht</span><span>–</span></div>
-        <div class="pill" id="tbRem" title="Restlaufzeit bei aktuellem Strom"><span class="lbl">Rest</span><span>–</span></div>
-        <div class="pill" id="tbHull" title="Temperatur Innenraum"><span class="lbl">Innen</span><span>–</span></div>
         <div class="pill" id="tbEsc" title="Temperatur ESC (Fahrtregler)"><span class="lbl">ESC</span><span>–</span></div>
-        <div class="pill" id="tbPump" title="Kühlpumpe: Modus und Drehzahl"><span class="lbl">Pumpe</span><span>–</span></div>
-        <div class="pill" id="tbLight" title="Lichtmodus"><span class="lbl">Licht</span><span>–</span></div>
         <div class="pill" id="tbLeak" title="Leck-Sensor"><span class="lbl">Leck</span><span>–</span></div>
+        <div class="tb-secbox" id="tbSec">
+          <div class="pill" id="tbData" title="LTE-Datenverbrauch seit dem letzten Reset (Schätzung)"><span class="lbl">LTE-Daten</span><span>–</span></div>
+          <div class="pill" id="tbCur" title="Strom und Leistung (alles zusammen)"><span class="lbl">Strom</span><span>–</span></div>
+          <div class="pill" id="tbUsed" title="Seit dem letzten Zurücksetzen verbrauchte Energie"><span class="lbl">Verbraucht</span><span>–</span></div>
+          <div class="pill" id="tbRem" title="Restlaufzeit bei aktuellem Strom"><span class="lbl">Rest</span><span>–</span></div>
+          <div class="pill" id="tbHull" title="Temperatur Innenraum"><span class="lbl">Innen</span><span>–</span></div>
+          <div class="pill" id="tbPump" title="Kühlpumpe: Modus und Drehzahl"><span class="lbl">Pumpe</span><span>–</span></div>
+          <div class="pill" id="tbLight" title="Lichtmodus"><span class="lbl">Licht</span><span>–</span></div>
+        </div>
+        <button class="pill unit-btn" id="tbMore" title="Weitere Werte ein- oder ausblenden" aria-expanded="false">Mehr ▾</button>
         <button class="pill unit-btn" id="unitBtn" title="Geschwindigkeit: km/h oder m/s">km/h</button>
         <button class="icon-btn" id="themeBtn" title="Hell/Dunkel umschalten"><i data-icon="theme"></i></button>
       </div>
@@ -121,53 +124,60 @@
             </div>
           </div>
 
-          <div class="side">
-            <div class="card">
-              <h3>Telemetrie</h3>
-              <div class="stat-row">
-                <div class="stat big"><label>Geschwindigkeit</label><b id="lvSpeed">–</b><small id="lvSpeedUnit">km/h</small></div>
-                <div class="stat big"><label>Kurs</label><b id="lvHeading">–</b><small>°</small></div>
+          <div class="side live-side">
+            <div class="card side-card">
+              <div class="tabs" role="tablist" id="liveTabs">
+                <button class="tab active" role="tab" data-tab="ov">Übersicht</button>
+                <button class="tab" role="tab" data-tab="det">Details</button>
+                <button class="tab" role="tab" data-tab="set">Einstellungen</button>
               </div>
-              <div class="kv">
-                <div><span>Modus</span><b id="lvMode">–</b></div>
-                <div><span>Mission</span><b id="lvMission">–</b></div>
-                <div><span>Nächster Wegpunkt</span><b id="lvWp">–</b></div>
-                <div><span>Distanz / Ankunft</span><b id="lvEta">–</b></div>
-                <div><span>Soll-Kurs / Abweichung</span><b id="lvBrg">–</b></div>
-                <div><span>Entfernung zu Home</span><b id="lvHome">–</b></div>
-                <div><span>Fahrzeit / Strecke (Aufnahme)</span><b id="lvTrip">–</b></div>
-                <div><span>Position</span><b id="lvPos" class="mono">–</b></div>
-                <div><span>GPS</span><b id="lvGps">–</b></div>
-                <div><span>LTE</span><b id="lvLte">–</b></div>
-                <div><span>Luftdruck</span><b id="lvPress">–</b></div>
-              </div>
-            </div>
 
-            <div class="card">
-              <h3>Kompass &amp; Lage</h3>
-              <div class="inst">
-                <svg id="compass" viewBox="0 0 120 120" aria-label="Kompass"></svg>
-                <svg id="horizon" viewBox="0 0 120 120" aria-label="Lage"></svg>
+              <div class="tab-pane ov active" data-pane="ov">
+                <div class="ov-main">
+                  <div class="stat-row">
+                    <div class="stat big"><label>Geschwindigkeit</label><b id="lvSpeed">–</b><small id="lvSpeedUnit">km/h</small></div>
+                    <div class="stat big"><label>Kurs</label><b id="lvHeading">–</b><small>°</small></div>
+                  </div>
+                  <div class="kv">
+                    <div><span>Modus</span><b id="lvMode">–</b></div>
+                    <div><span>Mission</span><b id="lvMission">–</b></div>
+                    <div><span>Nächster Wegpunkt</span><b id="lvWp">–</b></div>
+                    <div><span>Distanz / Ankunft</span><b id="lvEta">–</b></div>
+                    <div><span>Soll-Kurs / Abweichung</span><b id="lvBrg">–</b></div>
+                    <div><span>Entfernung zu Home</span><b id="lvHome">–</b></div>
+                  </div>
+                </div>
+                <div class="ov-side">
+                  <div class="inst">
+                    <svg id="compass" viewBox="0 0 120 120" aria-label="Kompass"></svg>
+                    <svg id="horizon" viewBox="0 0 120 120" aria-label="Lage"></svg>
+                  </div>
+                  <div class="kv two">
+                    <div><span>Roll</span><b id="lvRoll">–</b></div>
+                    <div><span>Pitch</span><b id="lvPitch">–</b></div>
+                  </div>
+                  <div class="bar-row"><label>Gas</label>
+                    <div class="bar"><i id="barThr"></i></div><b id="lvThr">–</b></div>
+                  <div class="bar-row"><label>Ruder</label>
+                    <div class="bar center"><i id="barRud"></i><u></u></div><b id="lvRud">–</b></div>
+                </div>
               </div>
-              <div class="kv two">
-                <div><span>Roll</span><b id="lvRoll">–</b></div>
-                <div><span>Pitch</span><b id="lvPitch">–</b></div>
-              </div>
-            </div>
 
-            <div class="card">
-              <h3>Antriebssysteme</h3>
-              <div class="bar-row"><label>Gas</label>
-                <div class="bar"><i id="barThr"></i></div><b id="lvThr">–</b></div>
-              <div class="bar-row"><label>Ruder</label>
-                <div class="bar center"><i id="barRud"></i><u></u></div><b id="lvRud">–</b></div>
-            </div>
-
-            <div class="card" id="liveCtl">
-              <div class="card-head">
-                <h3>Einstellungen</h3>
-                <span class="tag" id="lcSync">–</span>
+              <div class="tab-pane" data-pane="det">
+                <div class="kv">
+                  <div><span>Fahrzeit / Strecke (Aufnahme)</span><b id="lvTrip">–</b></div>
+                  <div><span>Position</span><b id="lvPos" class="mono">–</b></div>
+                  <div><span>GPS</span><b id="lvGps">–</b></div>
+                  <div><span>LTE</span><b id="lvLte">–</b></div>
+                  <div><span>Luftdruck</span><b id="lvPress">–</b></div>
+                </div>
               </div>
+
+              <div class="tab-pane" id="liveCtl" data-pane="set">
+                <div class="card-head">
+                  <h3>Einstellungen</h3>
+                  <span class="tag" id="lcSync">–</span>
+                </div>
               <div class="lc-block">
                 <div class="lc-label">Licht</div>
                 <div class="chips" id="lcLight"></div>
@@ -191,8 +201,8 @@
                 <p class="notice" id="lcLimit" hidden></p>
               </div>
               <p class="muted small">Änderungen gelten sofort und werden vom Boot quittiert. Alle Parameter unter «Einstellungen».</p>
+              </div>
             </div>
-
           </div>
         </div>
       </section>

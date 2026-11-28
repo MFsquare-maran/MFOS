@@ -20,7 +20,7 @@ Nach Änderungen an JavaScript oder CSS hilft ein hartes Neuladen (Strg + Umscha
 
 | Ansicht | Inhalt |
 |---|---|
-| **Live** | Karte mit Boot, Spur, Wegpunkten, Home, Geofence und Ankunftsradius. Kompass und Lage, Antriebssysteme (Soll Gas und Ruder), Telemetrie-Liste, Einstellungen (Licht, Kühlpumpe, Reisegeschwindigkeit, Maximales Gas, Ankunftsradius). Knöpfe: Scharf schalten, Mission starten, Manuell (Funke), Manuell Soft (Tempo vom Dashboard, Ruder von der Funke), Stopp, Return Home, NOT-AUS |
+| **Live** | **Füllt das Fenster ohne Scrollen** (Querformat: Karte links, Seitenspalte rechts mit Tabs Übersicht, Details, Einstellungen; Hochformat: Karte oben). Karte mit Boot, Spur, Wegpunkten, Home, Geofence und Ankunftsradius. Kompass und Lage, Antriebssysteme (Soll Gas und Ruder), Telemetrie-Liste, Einstellungen (Licht, Kühlpumpe, Reisegeschwindigkeit, Maximales Gas, Ankunftsradius). Knöpfe: Scharf schalten, Mission starten, Manuell (Funke), Manuell Soft (Tempo vom Dashboard, Ruder von der Funke), Stopp, Return Home, NOT-AUS |
 | **Mission** | Wegpunkte per Klick setzen, verschieben, sortieren. Home-Position einstellen und als Wegpunkt «H» einbauen. Als Kurs speichern, an das Boot senden |
 | **Kurse** | Kursbibliothek mit Namen. Import (GPX, GeoJSON, JSON, CSV), Export (GPX, JSON), Kennzahlen (Länge, Dauer, weiteste Entfernung von Home), «Auf Boot spielen» |
 | **Telemetrie** | Kacheln und neun einzelne Zeitreihen. Zeitfenster 1 min bis 5 h oder eigener Wert, Zoom |
