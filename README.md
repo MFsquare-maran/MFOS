@@ -76,7 +76,7 @@ Ausführlich mit Entscheidungen, offenen Punkten und der Reihenfolge fürs Weite
 | Funkverbindung (LTE, WLAN, MQTT) | **fehlt** |
 | Navigation (Wegpunkte abfahren, Return Home, Geofence) | **fehlt** |
 | Scharf schalten, NOT-AUS, Testmodus, Befehls-Verfall | **fehlt** in der Firmware, im Dashboard als Simulation fertig |
-| Dashboard | fertig als Mockup: Live, Mission, Kurse, Telemetrie, Einstellungen, Tests, Replay, Status |
+| Dashboard | fertig als Mockup: Live, Mission, Kurse, Telemetrie, Einstellungen, Tuning, Tests, Replay, Status |
 | Server: MQTT-Broker (Mosquitto, Rechte pro Boot) und passwortgeschützter Web-Server, TLS durch den Reverse Proxy | in `deploy/`, in Portainer deployt, Fehler anhand der Logs behoben; Start nach dem letzten Fix noch zu bestätigen |
 | Backend (Speicherung, Aufzeichnung, Befehle mit Verfallszeit, Anmeldung) | **fehlt** |
 

@@ -108,6 +108,8 @@
     light: 3,
     mission: { wps: sampleWps(), active: 0, sync: 'ok', name: 'Rundkurs Nord', courseId: 'c-seed-1' },
     params: defaultParams(), paramSync: 'ok',
+    // Regler-Tuning: aktiver Satz im Boot (cur) und letzter guter Satz (good), siehe docs/schnittstelle.md 6a
+    tune: { ...M.tuneStore.load(), rev: 1 },
     // Verbindung: das Boot kann ueber LTE (Modem) oder WLAN (ESP32) senden
     net: { mode: 'auto', active: 'lte', switchedAt: null,
            wifi: { ssid: '', saved: false, state: 'none', rssi: -60, ip: '', error: '' } },
@@ -338,6 +340,37 @@
     // LTE-Datenzaehler zuruecksetzen (z. B. zum Monatsanfang)
     resetLteData() {
       send('LTE-Datenzähler zurücksetzen', () => { s.data.sinceReset = 0; s.data.resetAt = Date.now(); M.log('LTE-Datenzähler zurückgesetzt', 'warn'); }, 600);
+    },
+
+    // ---- Regler-Tuning (Seite "Tuning") ----
+    // values: nur die geaenderten Schluessel. Das Boot prueft die Grenzen und uebernimmt alles oder nichts.
+    setTune(values, label = 'Regler-Werte senden') {
+      const v = M.tuneValidate(values, s.tune.cur);
+      if (!v.ok) { M.toast(v.errors[0], 'crit'); return false; }
+      if (!Object.keys(v.clean).length) return false;
+      return send(label, () => {
+        Object.assign(s.tune.cur, v.clean); s.tune.rev++;
+        M.tuneStore.save(s.tune.cur, s.tune.good);
+        M.log(`Regler-Werte übernommen (${Object.keys(v.clean).length})`, 'ok'); M.emit('tune');
+      }, 700);
+    },
+    tuneDefaults(group) {
+      const def = M.tuneDefaults(), vals = {};
+      Object.keys(def).forEach(k => { if (!group || M.TUNE_BY_KEY[k].group === group) vals[k] = def[k]; });
+      return M.actions.setTune(vals, group ? 'Standardwerte laden' : 'Alle Standardwerte laden');
+    },
+    // Sprungtest: das Boot quittiert, danach laufen die Verlaeufe (siehe view-tuning.js)
+    tuneStep(label, apply) { return send(label, apply, 600); },
+    tuneMarkGood() {
+      send('Satz als «letzten guten» merken', () => {
+        s.tune.good = { ...s.tune.cur }; M.tuneStore.save(s.tune.cur, s.tune.good); M.emit('tune');
+      }, 500);
+    },
+    tuneRestore() {
+      send('Letzten guten Satz wiederherstellen', () => {
+        s.tune.cur = { ...s.tune.good }; s.tune.rev++; M.tuneStore.save(s.tune.cur, s.tune.good);
+        M.log('Letzter guter Regler-Satz wiederhergestellt', 'warn'); M.emit('tune');
+      }, 700);
     },
 
     // Verbrauchszaehler (mAh/Wh) auf 0, z. B. nach dem Laden oder bei neuem Akku

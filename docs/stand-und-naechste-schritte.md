@@ -7,7 +7,7 @@
 | Teil | Stand | Geprüft? |
 |---|---|---|
 | **Firmware** (`firmware/`) | Treiber für Sensoren, Antrieb, Ruder, Pumpe, Lichter, Fernsteuerung vorhanden. **Die Schnittstelle fehlt komplett** (kein LTE, WLAN, MQTT, scharf/NOT-AUS, Navigation, Failsafe). | Nie gebaut (kein PlatformIO) |
-| **Dashboard** (`dashboard/`) | Als Mockup fertig: Live, Mission, Kurse, Telemetrie, Einstellungen, Tests, Replay, Status. Alle Werte sind **simuliert**. | Im Browser durchgeklickt, keine Konsolenfehler |
+| **Dashboard** (`dashboard/`) | Als Mockup fertig: Live, Mission, Kurse, Telemetrie, Einstellungen, Tuning, Tests, Replay, Status. Alle Werte sind **simuliert**. | Im Browser durchgeklickt, keine Konsolenfehler |
 | **Server-Stack** (`deploy/`) | Mosquitto und passwortgeschützter Web-Server als Docker-Compose-Stack für Portainer, hinter einem Reverse Proxy auf einem anderen Server. In Portainer deployt, Fehler wurden anhand der Logs behoben (siehe 3). | Skripte, YAML, Passwortprüfungen, erzeugte Konfiguration geprüft. **Der Start nach dem letzten Fix ist noch nicht bestätigt.** |
 | **Backend** (Speicherung, Aufzeichnung, Kurse, Befehle mit Verfallszeit, Anmeldung) | **Fehlt.** | – |
 | **Schnittstelle** (`docs/schnittstelle.md`) | Vertrag als Entwurf 0.1. | – |
@@ -98,7 +98,8 @@ Aus dem Log ersichtlich: Die Passwortprüfung greift, der Datenordner wird besch
    - Details und bekannte Auffälligkeiten: `firmware/README.md`.
 6. **Dashboard:** `js/state.js` durch die echte Datenquelle ersetzen (Anleitung in `dashboard/README.md`). Aufzeichnung auf den Server verlegen.
 7. **Härtung später:** Zweitfaktor oder VPN fürs Dashboard, Bibliotheken selbst ausliefern (statt cdnjs), Zertifikat je Boot (mTLS), mehrere Boote.
-8. **Weitere Punkte der Schnittstelle:** `docs/schnittstelle.md`, Abschnitt 13 (Vollgas-Geschwindigkeit messen, Geofence-Aktion, kritischer Akku, «Position halten» streichen, Datenmenge bei 100 ms).
+8. **Seite «Tuning» für alle Regler (neu, 28.11.).** Zuerst klären, welche Regler das Boot braucht. Entwurf der Reglerliste (vier Regler eingeplant: Tempo, Kurs, Gierrate, Bahn; Kühlpumpe bleibt Ein/Aus) und die offenen Fragen dazu: `docs/regler.md`. **Erledigt:** Schnittstelle (`docs/schnittstelle.md` 6a) und Seite als Mockup (Sprungtests laufen gegen ein Platzhalter-Boot, im Browser geprüft: Senden mit Quittung, Grenzenprüfung, Abbruch bei NOT-AUS/Entschärfen/Seite verlassen, m/s, Handy). **Offen:** die Hardwarefragen in `docs/regler.md` Abschnitt 5, die echte Firmware (Regler, `setTune`, Tuning-Telemetrie) und das Messen der Kennlinie Gas → Tempo.
+9. **Weitere Punkte der Schnittstelle:** `docs/schnittstelle.md`, Abschnitt 13 (Vollgas-Geschwindigkeit messen, Geofence-Aktion, kritischer Akku, «Position halten» streichen, Datenmenge bei 100 ms).
 
 ## 6. So geht es morgen weiter
 
@@ -123,6 +124,7 @@ Aus dem Log ersichtlich: Die Passwortprüfung greift, der Datenordner wird besch
 | `README.md` | Überblick, Hardware, Stand, offene Entscheidungen |
 | `CLAUDE.md` | Arbeitsregeln für Claude Code, Konventionen, Sicherheitsregeln |
 | `docs/schnittstelle.md` | Vertrag Boot ↔ Dashboard (einzige Quelle der Wahrheit) |
+| `docs/regler.md` | Entwurf: welche Regler das Boot braucht, Grundlage für die Seite «Tuning» |
 | `deploy/README.md` | Server einrichten, Variablen, Proxy, Sicherheitsmodell, Betrieb |
 | `deploy/docker-compose.yml`, `deploy/.env.example` | der Stack und seine Einstellungen |
 | `firmware/README.md` | Firmware: Aufbau, was fehlt, Auffälligkeiten |

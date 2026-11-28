@@ -47,6 +47,7 @@
     <button class="nav-item" data-view="courses"><i data-icon="folder"></i><span>Kurse</span></button>
     <button class="nav-item" data-view="energy"><i data-icon="bolt"></i><span>Telemetrie</span></button>
     <button class="nav-item" data-view="control"><i data-icon="sliders"></i><span>Einstellungen</span></button>
+    <button class="nav-item" data-view="tuning"><i data-icon="dial"></i><span>Tuning</span></button>
     <button class="nav-item" data-view="tests"><i data-icon="flask"></i><span>Tests</span></button>
     <button class="nav-item" data-view="replay"><i data-icon="replay"></i><span>Replay</span></button>
     <button class="nav-item" data-view="status"><i data-icon="activity"></i><span>Status</span><b class="badge" id="navAlarmBadge" hidden>0</b></button>
@@ -339,6 +340,26 @@
         </div>
       </section>
 
+      <!-- ================= TUNING ================= -->
+      <section id="view-tuning" class="view">
+        <div class="notice">Mockup: Die Verläufe rechnet ein einfaches <b>Platzhalter-Boot</b> im Browser, nicht das echte Boot. Die Standardwerte sind Startwerte für die Firmware und noch nicht am Boot abgestimmt. Alle Tempo-Werte sind in km/h, unabhängig vom Einheiten-Knopf.</div>
+        <div class="card tune-bar" id="tuneBar"></div>
+        <div class="tune-layout">
+          <div class="tune-cards" id="tuneCards"></div>
+          <div class="tune-side">
+            <div class="card" id="tuneRun">
+              <div class="card-head"><h3 id="tuneRunTitle">Sprungtest</h3><span class="tag" id="tuneRunTag">bereit</span></div>
+              <p class="muted small" id="tuneRunHint">Wähle links bei einem Regler «Test starten». Der Test läuft mit dem <b>gesendeten</b> Satz, nicht mit dem Entwurf.</p>
+              <div class="chart-box tune-chart"><canvas id="chTuneMain"></canvas></div>
+              <div class="chart-box tune-chart small"><canvas id="chTuneParts"></canvas></div>
+              <div class="stat-row" id="tuneMetrics"></div>
+              <ul class="tune-verdict" id="tuneVerdict"></ul>
+              <div class="btn-row"><button class="btn danger" id="tuneAbort" disabled>Test abbrechen</button></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <!-- ================= TESTS ================= -->
       <section id="view-tests" class="view">
         <div class="card test-gate" id="testGate"></div>
@@ -499,6 +520,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/hammer.js/2.0.8/hammer.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chartjs-plugin-zoom/2.0.1/chartjs-plugin-zoom.min.js"></script>
+<script src="js/tune-defs.js"></script>
 <script src="js/state.js"></script>
 <script src="js/ui.js"></script>
 <script src="js/courses.js"></script>
@@ -506,6 +528,8 @@
 <script src="js/map.js"></script>
 <script src="js/view-live.js"></script>
 <script src="js/view-mission.js"></script>
+<script src="js/tune-sim.js"></script>
+<script src="js/view-tuning.js"></script>
 <script src="js/view-tests.js"></script>
 <script src="js/view-courses.js"></script>
 <script src="js/view-energy.js"></script>

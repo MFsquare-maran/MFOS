@@ -25,6 +25,7 @@ Nach Änderungen an JavaScript oder CSS hilft ein hartes Neuladen (Strg + Umscha
 | **Kurse** | Kursbibliothek mit Namen. Import (GPX, GeoJSON, JSON, CSV), Export (GPX, JSON), Kennzahlen (Länge, Dauer, weiteste Entfernung von Home), «Auf Boot spielen» |
 | **Telemetrie** | Kacheln und neun einzelne Zeitreihen. Zeitfenster 1 min bis 5 h oder eigener Wert, Zoom |
 | **Einstellungen** | **Verbindung** (Auto, Nur LTE, Nur WLAN, WLAN-Zugang) und alle Parameter, Zähler zurücksetzen (Akku, LTE-Daten) |
+| **Tuning** | Regler (Tempo, Kurs, Gierrate, Bahn) und weitere Tuning-Werte bearbeiten, mit Quittung senden, Sprungtest mit Diagramm und Kennzahlen, letzter guter Satz, Profile, Export/Import. Mockup: die Verläufe rechnet ein Platzhalter-Boot (`tune-sim.js`) |
 | **Tests** | Aktoren einzeln prüfen: Motor, Ruder-Servo, Kühlpumpe, vier Lichtkanäle |
 | **Replay** | Aufgezeichnete Fahrten abspielen, Kennzahlen, Download als CSV, GPX oder JSON |
 | **Status** | Verbindung, Sensoren, Ereignis-Log, Demo-Auslöser für Alarme |
@@ -63,6 +64,7 @@ Vollständig mit allen Schlüsseln, Einheiten und Fehlercodes: [`../docs/schnitt
 | Zähler | `resetConsumption`, `resetLteData` |
 | Verbindung | `setNetMode` (`auto`/`lte`/`wifi`), `setWifi` (SSID, Passwort), `forgetWifi` |
 | Test | `testStart`, `testEnd`, `testSet` (Motor mit Totmann, Servo, Pumpe, Pumpen-Drehzahl, Licht-Kanäle) |
+| Regler | `setTune`, `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneStep`/`tuneStop` (siehe `docs/schnittstelle.md` 6a) |
 
 **Was die Firmware dabei garantieren muss** (Auszug, Details in Abschnitt 9 der Schnittstelle):
 
@@ -115,6 +117,9 @@ dashboard/
     ├── view-courses.js  Ansicht Kurse
     ├── view-energy.js   Ansicht Telemetrie (Graphen)
     ├── view-control.js  Ansicht Einstellungen (Verbindung, Parameter, Zähler)
+    ├── tune-defs.js     Tuning: Werteliste, Grenzen, Standardwerte (vor state.js geladen)
+    ├── tune-sim.js      Tuning: Platzhalter-Boot für die Sprungtests (entfällt mit echtem Boot)
+    ├── view-tuning.js   Ansicht Tuning
     ├── view-tests.js    Ansicht Tests
     ├── view-replay.js   Ansicht Replay
     ├── view-status.js   Ansicht Status

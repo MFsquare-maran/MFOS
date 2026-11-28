@@ -47,7 +47,7 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 
 ## Dashboard: Konventionen
 
-- **Kein Framework, kein Bundler.** Skripte als IIFE, gemeinsamer Namensraum `window.MFOS` (`M`). Ladereihenfolge steht am Ende von `index.html`: `state.js`, `ui.js`, `courses.js`, `recorder.js`, `map.js`, `view-*.js`, `app.js`. Abhängigkeiten nur nach unten, nie auf später geladene Dateien beim Laden (erst zur Laufzeit).
+- **Kein Framework, kein Bundler.** Skripte als IIFE, gemeinsamer Namensraum `window.MFOS` (`M`). Ladereihenfolge steht am Ende von `index.html`: `tune-defs.js`, `state.js`, `ui.js`, `courses.js`, `recorder.js`, `map.js`, `tune-sim.js`, `view-*.js`, `app.js`. Abhängigkeiten nur nach unten, nie auf später geladene Dateien beim Laden (erst zur Laufzeit).
 - **Eine Datenquelle:** `js/state.js` (`MFOS.state`, `MFOS.actions`, `MFOS.on('tick'|…)`). Ansichten lesen den Zustand und senden Befehle über `MFOS.actions`, sie erfinden keine Werte. Für den echten Betrieb wird nur `state.js` ersetzt.
 - **Parameter** definiert allein `MFOS.PARAM_DEFS` (Schlüssel, Einheit, Bereich, Standard). Neues Feld dort ergänzen, die Ansicht Einstellungen zeichnet es selbst. Eingaben immer über `M.readParam` lesen, Felder über `M.paramField` zeichnen (km/h ↔ m/s).
 - **Einheiten intern:** Geschwindigkeit km/h. Anzeige über `M.spd`, `M.fmtSpd`, `M.spdUnit`. Nie km/h fest in Text schreiben.
@@ -91,6 +91,7 @@ Transport: **MQTT 3.1.1 über TLS, JSON**, Broker Mosquitto (`deploy/`), TLS bee
 | Zähler | `resetConsumption`, `resetLteData` |
 | Verbindung | `setNetMode` `auto`/`lte`/`wifi`, `setWifi` (ssid, password), `forgetWifi` |
 | Test | `testStart`, `testEnd`, `testSet` (`motor` mit Totmann, `servo`, `pump`, `pumpSpeed`, `light`) |
+| Regler | `setTune` (Werte `<gruppe>.<name>`, Liste in `dashboard/js/tune-defs.js`), `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneStep`/`tuneStop` (Sprungtest nur scharf und `AUTO`, Tuning-Telemetrie `tune`), siehe `docs/schnittstelle.md` 6a |
 
 Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-Prozent, Restlaufzeit, Distanzen, ETA, Alarme und Fahrten-Kennzahlen selbst, die Firmware liefert das nicht.
 
@@ -118,6 +119,7 @@ Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-P
 ## Offene Entscheidungen
 
 0. **Login-Bildschirm und Logout-Knopf** fürs Dashboard (heute nur Basic Auth: Browser-Fenster, kein Abmelden). Optionen und Empfehlung (Login im Backend) in `docs/stand-und-naechste-schritte.md`, Abschnitt 4. **Noch nicht entschieden und nicht gebaut.**
+0b. **Seite «Tuning»** (vier Regler: Tempo, Kurs, Gierrate, Bahn, dazu Ruder, Gas, Annäherung, Filter, Strombegrenzung): **als Mockup gebaut** (`js/tune-defs.js` = Werteliste, Grenzen, Standardwerte; `js/tune-sim.js` = Platzhalter-Boot für die Sprungtests; `js/view-tuning.js`). Vertrag: `docs/schnittstelle.md` 6a, Begründung und offene Hardwarefragen: `docs/regler.md`. Die Standardwerte und das Platzhalter-Boot sind **nicht gemessen**. Die Firmware hat bisher keinen Regler.
 1. **Backend** hinter Mosquitto: Speicherung, Fahrten, Kurse, Befehle mit Verfall, Anmeldung mit Zweitfaktor. (ThingsBoard ist entschieden **nicht**.) Bis dahin zeigt das Dashboard nur Simulation und sollte nicht mit echten Daten betrieben werden.
 2. **UART:** ESP32 hat 3 UARTs (USB, GPS, SBUS), das LTE-Modem wäre die vierte. `pins.h` nennt UART1 für das Modem, `RcReceiver` nutzt standardmässig UART1.
 3. **Vollgas-Geschwindigkeit** (Dashboard nimmt 14 km/h bei 100 % Gas an) messen und als Parameter einführen.

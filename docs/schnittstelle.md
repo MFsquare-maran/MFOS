@@ -147,6 +147,12 @@ Fehlercodes: `expired`, `not_armed`, `armed`, `estop_active`, `not_stopped`, `te
 | `testStart` | – | entschärft, Modus `STOP`, kein NOT-AUS | Testmodus (Abschnitt 9) |
 | `testEnd` | – | – | Testmodus beenden, alle Ausgänge aus |
 | `testSet` | `kind` + Wert, siehe unten | Testmodus aktiv | Aktor ansteuern |
+| `setTune` | Objekt `{ "speed.kp": 6, … }`, nur die geänderten Schlüssel | – | Regler- und Tuning-Werte setzen (Abschnitt 6a) |
+| `tuneDefaults` | `group` (optional) | – | Standardwerte einer Gruppe oder aller Gruppen |
+| `tuneRestore` | – | – | «Letzter guter Satz» wiederherstellen |
+| `tuneMarkGood` | – | – | aktuellen Satz als «letzten guten» im Flash merken |
+| `tuneStep` | `ctrl`: `speed`/`course`/`yaw`/`track`, `size` | scharf, `AUTO`, kein NOT-AUS | Sprungtest starten (Abschnitt 6a) |
+| `tuneStop` | – | – | Sprungtest abbrechen, normale Regelung übernimmt |
 
 **`wps`:** Liste von `{"lat": 47.35, "lon": 8.68}` oder `{"home": true}`. Der Eintrag `home` bedeutet die jeweils aktuelle Home-Position und wird erst bei der Fahrt aufgelöst. Höchstens 100 Punkte.
 
@@ -185,6 +191,31 @@ Parameter gehören dem Boot (Flash) und werden mit `setParams` geändert. Das Bo
 | `dataLimit` | MB | 1000 | 50–20000 | Dashboard | LTE-Monatsgrenze |
 
 Dashboard-eigene Werte muss das Boot nicht speichern. In der heutigen Simulation gehen alle Parameter in einem Satz an das Boot; im echten System genügt das für die Spalte «Boot».
+
+## 6a. Regler und Tuning
+
+Vorlage und Begründung: `docs/regler.md`. Die Werte heissen `<gruppe>.<name>` und werden mit `setTune` gesetzt (nicht mit `setParams`). Die Liste mit Einheiten, Grenzen und Standardwerten steht **allein** in `dashboard/js/tune-defs.js` (`M.TUNE_GROUPS`); das Boot muss dieselben Grenzen durchsetzen und Werte ausserhalb mit `invalid_arg` ablehnen (das ganze Paket, nichts wird teilweise übernommen). Tempo-Werte sind km/h.
+
+| Gruppe | Art | Werte |
+|---|---|---|
+| `speed` | PID | `kp`, `ki`, `ff`, `iLimit` |
+| `course` | PID | `kp`, `ki`, `iLimit`, `maxRate`, `kd` |
+| `yaw` | PID | `enabled`, `kp`, `ki`, `kd`, `iLimit`, `ff` |
+| `track` | PID | `kp`, `ki`, `iLimit`, `maxCorr` |
+| `rudder` | Werte | `trim`, `maxDefl`, `slew`, `deadband`, `reverse`, `minUs`, `maxUs` |
+| `esc` | Werte | `rampUp`, `rampDown`, `startThr`, `minUs`, `maxUs` |
+| `appr` | Werte | `turnAngle`, `turnFactor`, `nearDist`, `nearFactor` |
+| `filt` | Werte | `headingAlpha`, `compassBlend`, `gpsSpeedAlpha`, `gpsCourseMinSpeed` |
+| `curr` | Werte | `enabled`, `maxCurrent` |
+
+- **Kaskade:** Bahn-Regler → Kurs-Regler → Gierraten-Regler → Ruder; Tempo-Regler → Gas. Ist `yaw.enabled = false`, stellt der Kurs-Regler das Ruder direkt (mit Gyro-Dämpfung `course.kd`).
+- Das Boot meldet beim Start den vollen Satz im Ereignis `boot` (Feld `tune`) und nach jeder Änderung im Zustand (`tune_rev`, hochgezählt). Das Dashboard vergleicht Entwurf und aktiven Satz.
+- **Weiche Übernahme:** Neue Werte gelten ab dem nächsten Regeltakt, Integratoren werden dabei so nachgeführt, dass das Stellsignal nicht springt.
+- **Letzter guter Satz:** Das Boot hält zwei Sätze im Flash, den aktuellen und den letzten als gut markierten (`tuneMarkGood`).
+- **Sprungtest** (`tuneStep`): nur bei scharfem Boot im Modus `AUTO` und nur mit Abbruch durch `tuneStop`, NOT-AUS, Entschärfen, Verbindungsverlust und Ablauf von 30 s. Grösse `size`: Tempo-Sprung in km/h, Kurssprung in °, Drehraten-Sprung in °/s, Startabstand zur Linie in m (Grenzen in `tune-defs.js`, `test`).
+- **Tuning-Telemetrie** (Topic `telemetry`, nur solange der Sprungtest läuft oder die Seite Tuning `tuneStep` gestartet hat, bis 10 Hz): `tune: {ctrl, sp, pv, out, p, i, d}` mit Soll, Ist, Ausgang und den Anteilen. Sie wird nicht aufgezeichnet.
+- Ereignisse: `tune_started`, `tune_ended` (mit `reason`: `done`, `stopped`, `estop`, `disarmed`, `link`, `timeout`).
+- Die Kennzahlen (Anstiegszeit, Überschwingen, Beruhigungszeit, bleibende Abweichung) rechnet das Dashboard aus der Tuning-Telemetrie.
 
 ## 7. Licht, Pumpe, Aktoren
 
