@@ -7,6 +7,7 @@ pattern write mfos/%u/telemetry
 pattern write mfos/%u/status
 pattern write mfos/%u/event
 pattern write mfos/%u/ack
+pattern write mfos/%u/tune
 pattern read  mfos/%u/cmd
 
 # Backend (laeuft im selben Compose, vertrauenswuerdig): liest und schreibt alles unter mfos/

@@ -12,7 +12,8 @@
 - **Regeltakt:** Der Task `controllerTask` läuft heute alle 10 ms (100 Hz) und reicht nur Gas und Ruder vom Sender durch. Es gibt noch keinen Regler.
 - **Dashboard-Simulation:** Dort lenkt ein reiner P-Regler (`Ruder = 50 + Kursfehler/40 · 50`), das Tempo ist eine einfache Abbildung von Gas. Das ist nur ein Mockup und keine Vorlage für die Firmware.
 - **Heading-Filter heute:** Tiefpass mit festem Faktor 0,9 (etwa 100 ms bei 10 ms Takt), feste Magnetometer-Offsets, feste Deklination (Bern) und feste Einbaulage.
-- **GPS-Rate:** Der Code stellt am Modul nichts ein, nur die Baudrate (9600). Die Aktualisierungsrate ist vermutlich die Werkseinstellung (1 Hz). **Nicht geprüft.**
+- **GPS-Rate:** Der Code stellt am Modul nichts ein, nur die Baudrate (9600). Die Aktualisierungsrate ist vermutlich die Werkseinstellung (1 Hz). **Nicht geprüft.** Laut Datenblatt kann der M8N mehr (5 bis 10 Hz, nicht geprüft); dafür braucht die Firmware einen UBX-Befehl und eine höhere Baudrate.
+- **IMU im Detail (aus `lib/LSM9DS1Sensor`):** Gyro und Beschleunigung werden im Regeltakt (10 ms) gelesen; die Abtastrate des Gyros ist die Library-Voreinstellung (laut Datenblatt/Library vermutlich 952 Hz, **nicht geprüft**). Das Magnetometer läuft mit 40 Hz. Der **Kurs kommt nur vom Magnetometer** (neigungskompensiert, Tiefpass 0,9 je 10 ms, also etwa 0,1 s), **ohne Mischung mit dem Gyro**. Gyro-Bias wird beim Start bestimmt (Boot muss still liegen). Welche Chip-Achse beim Einbau die Gierachse ist, ist **nicht geprüft**.
 
 ## 2. Aufbau der Regelung
 
@@ -48,7 +49,7 @@ Vier Regler. Drei davon bilden eine **Kaskade** (Bahn-Regler ganz aussen, dann K
 | 3 | **Gierraten-Regler** (innerer Kreis) | Soll-Gierrate aus dem Kurs-Regler | Gierrate (Gyro Z) | Ruder 0 bis 100 % (50 = Mitte) | 50 Hz bis 100 Hz | PI, ggf. D |
 | 4 | **Bahn-Regler** (äusserster Kreis, Kursabweichung zur Linie) | Querabweichung 0 m (Boot genau auf der Linie) | Querabweichung zur Linie zwischen den Punkten, aus der GPS-Position | **Kurs-Korrektur** in Grad, wird zum Kurs der Linie addiert | 1 Hz bis 5 Hz (GPS) | P, I |
 
-- **Tempo-Regler:** Ohne Vorsteuerung (gemessene Kennlinie «Gas ↔ Tempo») arbeitet er sehr träge. Das Gas darf nie negativ werden (ESC nur vorwärts), also braucht er **Anti-Windup** und eine **Anlauframpe**. Das Boot hat zudem viel Trägheit, deshalb ist er langsam. Mit 1 Hz GPS wird die Regelung grob.
+- **Tempo-Regler:** Ohne Vorsteuerung (gemessene Kennlinie «Gas ↔ Tempo») arbeitet er sehr träge. Das Gas darf nie negativ werden (ESC nur vorwärts), also braucht er **Anti-Windup** und eine **Anlauframpe**. Das Boot hat zudem viel Trägheit, deshalb ist er langsam. Mit 1 Hz GPS wird die Regelung grob (im Dashboard-Simulator mit der Auswahl «GPS-Rate» ausprobierbar: bei 1 Hz überschwingt der Tempo-Sprung deutlich stärker als bei 5 oder 10 Hz).
 - **Kurs-Regler:** Der Fehler wird auf −180 bis +180° umgebrochen. Der Ausgang (Soll-Gierrate) ist auf eine **maximale Drehrate** begrenzt, das bestimmt, wie hart das Boot eindreht. Die Dämpfung kommt vom inneren Kreis.
 - **Gierraten-Regler:** Die **Gierrate** ist, wie schnell sich das Boot dreht (Grad pro Sekunde), der Gyro misst sie direkt. Der Regler stellt das Ruder so, dass die gemessene Drehung zur Vorgabe passt. Das reagiert schnell und verhindert, dass das Boot über das Ziel hinausschiesst und **schlängelt**. Der Ausgang ist auf den maximalen Ruderausschlag begrenzt. Das Gyro-Rauschen wird gefiltert. Der Gyro wird beim Start kalibriert (das macht `imu.begin` schon, das Boot muss dabei stillstehen).
 - **Vorschlag für den Anfang:** Der innere Kreis lässt sich auf der Tuning-Seite **ausschalten**. Dann stellt der Kurs-Regler (mit einem D-Anteil aus dem Gyro) das Ruder direkt. So kann man erst den einfachen Fall abstimmen und den inneren Kreis danach dazuschalten.
@@ -82,12 +83,12 @@ Vier Regler. Drei davon bilden eine **Kaskade** (Bahn-Regler ganz aussen, dann K
 
 ## 4. Die Seite «Tuning» im Dashboard (als Mockup gebaut, 28.11.2026)
 
-**Gebaut:** vier Reglerkarten mit Entwurf/aktiv, «Senden» mit Quittung, «Verwerfen», «Standardwerte», Sprungtest (Tempo, Kurs, Gierrate, Bahn) mit Diagramm (Soll, Ist, Ausgang, P/I/D/Vorsteuerung) und Kennzahlen, «Letzter guter Satz», Profile (Browser), Export/Import als JSON, Tuning-Werte für Ruder, Gas, Annäherung, Filter, Strom. Der Sprungtest läuft im Mockup gegen ein **Platzhalter-Boot** (`dashboard/js/tune-sim.js`, einfache Modelle, nicht gemessen), nur bei scharfem Boot im Modus AUTO und mit dem **gesendeten** Satz. Nicht im Simulator wirksam (in der Oberfläche markiert): Impulsbreiten, Richtung umkehren, Kompass-Anteil, Kurvenreduktion, Verlangsamen vor dem Wegpunkt, Strombegrenzung. Den Entwurf unten lesen wie ursprünglich geplant.
+**Gebaut:** vier Reglerkarten mit Entwurf/aktiv, «Senden» mit Quittung, «Verwerfen», «Standardwerte», Sprungtest (Tempo, Kurs, Gierrate, Bahn) mit Diagramm (Soll, Ist, Ausgang, P/I/D/Vorsteuerung) und Kennzahlen, «Letzter guter Satz», Profile (Browser), Export/Import als JSON, Tuning-Werte für Ruder, Gas, Annäherung, Filter, Strom. Der Sprungtest läuft im Mockup gegen ein **Platzhalter-Boot** (`dashboard/js/tune-sim.js`, einfache Modelle, nicht gemessen), nur im **Tuning-Modus** (`TUNE`) bei scharfem Boot (ohne Mission) und mit dem **gesendeten** Satz. Nicht im Simulator wirksam (in der Oberfläche markiert): Impulsbreiten, Richtung umkehren, Kompass-Anteil, Kurvenreduktion, Verlangsamen vor dem Wegpunkt, Strombegrenzung. Den Entwurf unten lesen wie ursprünglich geplant.
 
 Pro Regler eine Karte (Tempo, Kurs, Gierrate, Bahn) mit einem Schalter **«Gierraten-Regler an/aus»** (siehe Vorschlag in Abschnitt 3). Jede Karte enthält:
 
 - **Werten:** Kp, Ki, Kd, Ausgangsgrenzen, Grenze des I-Anteils (Anti-Windup), Filter für den D-Anteil, Totbereich, Vorsteuerung. Senden mit Quittung, «Standardwerte», «Letzter guter Satz» wiederherstellen.
-- **Live-Diagramm:** Soll, Ist, Ausgang und die **Anteile P, I und D** einzeln. Dafür sendet das Boot nur **solange die Seite offen ist** eine schnelle «Tuning-Telemetrie» (zum Beispiel 10 Hz) zusätzlich zur normalen.
+- **Live-Diagramm:** Soll, Ist, Ausgang und die **Anteile P, I und D** einzeln. Die Daten kommen **nicht live**: Das Boot zeichnet den Sprungtest selbst auf (eigene Zeitstempel, Regeltakt) und schickt den Verlauf danach (`docs/schnittstelle.md` 6a).
 - **Sprungantwort:** Knöpfe wie «Kurssprung +20°» oder «Tempo +1 km/h» mit Aufzeichnung der Antwort und Kennzahlen (Anstiegszeit, Überschwingen, Beruhigungszeit, bleibende Abweichung).
 - **Profile** («ruhiges Wasser», «Wind»), Speichern und Laden, Export als JSON.
 
@@ -97,20 +98,33 @@ Pro Regler eine Karte (Tempo, Kurs, Gierrate, Bahn) mit einem Schalter **«Gierr
 - Ein Sprungtest läuft nur bei **scharfem Boot** und mit sichtbarem NOT-AUS, und er bricht bei Verlassen der Seite, bei Verbindungsverlust und bei NOT-AUS ab.
 - Die letzten guten Werte bleiben im Boot gespeichert, ein Neustart nimmt nie ungeprüfte Werte.
 
-**Schnittstelle (kommt nach `docs/schnittstelle.md`, sobald die Reglerliste feststeht):** Parameter `pid.<regler>.kp|ki|kd|…`, Befehle `setPid` und `tuneStart`/`tuneStop`/`tuneStep`, Telemetrie `tune_*` (Soll, Ist, Ausgang, P, I, D je aktivem Regler). Die Schnittstelle kennt heute `cruiseSpeed` und `maxThrottle`, die der Tempo-Regler weiterverwendet. Die dort angenommenen 14 km/h bei Vollgas würde die gemessene Kennlinie ersetzen.
+**Schnittstelle (kommt nach `docs/schnittstelle.md`, sobald die Reglerliste feststeht):** Parameter `pid.<regler>.kp|ki|kd|…`, Befehle `setPid` und `tuneStart`/`tuneStop`/`tuneStep`, Aufzeichnung im Boot mit Upload auf `mfos/<id>/tune` (Soll, Ist roh und gefiltert, Ausgang, P, I, D, Gyro, Kurs, GPS-Tempo). Das ist inzwischen in `docs/schnittstelle.md` 6a festgeschrieben. Die Schnittstelle kennt heute `cruiseSpeed` und `maxThrottle`, die der Tempo-Regler weiterverwendet. Die dort angenommenen 14 km/h bei Vollgas würde die gemessene Kennlinie ersetzen.
 
 ## 5. Offene Fragen (davon hängt die Liste ab)
 
 1. **Antrieb und Lenkung:** Normaler Propeller mit Ruderblatt, oder Jet mit Düse? Wie gross ist der Ruderausschlag, und wie enge Kurven fährt das Boot?
 2. **ESC:** Hat er wirklich keinen Rückwärtsgang und keine Bremse? Regelt er die Drehzahl selbst (Governor-Modus)? Das ändert den Tempo-Regler.
 3. **Boot:** Rumpfform (Verdränger oder Gleiter), Länge, Höchsttempo. Wie genau soll es der Route folgen (zum Beispiel innerhalb 2 m)? Das legt fest, wie scharf der **Bahn-Regler (4)** eingestellt wird (Vorausschau, Grenze der Kurs-Korrektur).
-4. **GPS-Rate:** Darf die Firmware den M8N auf 5 oder 10 Hz stellen? Tempo- und Kursregelung profitieren stark davon. Heute vermutlich 1 Hz (nicht geprüft).
-5. **Kompass im Betrieb:** Die Magnetometer-Offsets sind fest eingetragen. Stört der Motorstrom das Heading? Gibt es eine Messung, wie sich der Kompass im Fahrbetrieb verhält?
+4. **GPS-Rate:** Darf die Firmware den M8N auf 5 oder 10 Hz stellen? Tempo- und Bahnregelung profitieren stark davon. Heute vermutlich 1 Hz (nicht geprüft). **Aufgabe für die Firmware, siehe Abschnitt 5a.**
+5. **Kompass im Betrieb:** Die Magnetometer-Offsets sind fest eingetragen. Stört der Motorstrom das Heading? Gibt es eine Messung, wie sich der Kompass im Fahrbetrieb verhält? **Prüfablauf: Abschnitt 5a.**
 6. **Handbetrieb mit Hilfen** («Kurs halten», «Tempo halten»): ja oder nein?
 7. **Wie wird getunt:** nur auf dem Wasser mit Sprungantwort, oder auch eine automatische Einstellung (Auto-Tuning) gewünscht?
 
+## 5a. Prüfungen und Aufgaben vor dem Tuning (Hardware)
+
+**Kompass-Prüfung (Motorstrom):** Der Kurs kommt nur vom Magnetometer. Der Strom von Motor und ESC (bis etwa 30 A) kann es je nach Gas verschieben. Das Magnetometer-Offset im Chip deckt nur den festen Anteil ab (Hard-Iron).
+
+1. Boot **gesichert** (Propeller frei, Boot festgehalten oder fest montiert), Testmodus an (Seite «Tests»), Boot flach und still, nicht bewegen.
+2. Kurs (`heading`) bei Gas 0 % notieren (30 s mitteln).
+3. Gas in Stufen erhöhen (10, 20, 40, 70, 100 %, je 10 s, **Totmann, höchstens 10 s am Stück**), den Kurs bei jeder Stufe mitteln, danach wieder Gas 0 % und Kurs prüfen.
+4. Auswertung: Änderung des Kurses je Stufe in Grad. Richtwert (Annahme, nicht gemessen): unter 2° ist unkritisch, über 5° bei Reisegas ist für den Kurs-Regler ein Problem.
+5. Ist sie zu gross: Magnetometer weiter weg vom Motor und von den Stromleitungen montieren, Leitungen verdrillen, oder den Kurs mit dem Gyro stützen (Mischung Gyro und Kompass, siehe Tuning-Wert «Kompass-Anteil», **in der Firmware noch nicht umgesetzt**).
+6. Dazu einmal prüfen: Dreht sich der Kurs im Uhrzeigersinn, wenn das Boot nach rechts dreht? Welche Gyro-Achse ist die Gierachse?
+
+**GPS-Rate (Aufgabe für die Firmware, noch nicht umgesetzt):** Beim Start per UBX-Befehl die Messrate des M8N auf 5 oder 10 Hz stellen (`UBX-CFG-RATE`) und dafür die Baudrate erhöhen (z. B. 38400 oder 115200, `UBX-CFG-PRT`); nur die nötigen NMEA-Sätze lassen. Danach die echte Rate messen und als `gps_hz` melden (Vorschlag, noch nicht im Vertrag). Ohne diese Änderung hat das Tempo-Tuning nur wenige Messpunkte im Anstieg. Bis dahin steht der Simulator auf 1 Hz.
+
 ## 6. Nächste Schritte
 
-1. Fragen in Abschnitt 5 beantworten, danach die Reglerliste festschreiben.
+1. Fragen in Abschnitt 5 beantworten, Prüfungen aus Abschnitt 5a durchführen, danach die Reglerliste festschreiben.
 2. Parameter, Befehle und Telemetrie in `docs/schnittstelle.md` eintragen.
 3. ~~Seite «Tuning» im Dashboard als Mockup bauen~~ (erledigt). Danach: Hardwarefragen klären, dann die Firmware.

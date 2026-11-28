@@ -61,6 +61,9 @@ Bibliotheken von aussen: Adafruit PWM Servo Driver, BMP280, ADS1X15, Unified Sen
 | Testmodus mit Totmann-Motor | fehlt |
 | Zeit (GPS oder Netzzeit) | fehlt |
 | Watchdog | fehlt |
+| Regler (Tempo, Kurs, Gierrate, Bahn), `setTune`, Tuning-Aufzeichnung (`docs/regler.md`, `docs/schnittstelle.md` 6a) | fehlt |
+| **GPS-Rate des M8N auf 5 oder 10 Hz stellen** (`UBX-CFG-RATE`, Baudrate hoch mit `UBX-CFG-PRT`), echte Rate messen und melden (`docs/regler.md` 5a). Heute nur 9600 Baud, vermutlich 1 Hz | fehlt |
+| Kurs mit Gyro stützen (Mischung Gyro und Kompass), heute nur Magnetometer; vorher Kompass-Prüfung bei Motorstrom (`docs/regler.md` 5a) | fehlt, Prüfung offen |
 
 ## Bekannte Auffälligkeiten
 

@@ -104,8 +104,19 @@
             <div class="actionbar">
               <button class="btn arm" id="btnArm"><i data-icon="lock"></i> <span>Scharf schalten</span></button>
               <button class="btn primary" id="btnStart"><i data-icon="play"></i> Mission starten</button>
+              <button class="btn" id="btnManual" title="Gas und Ruder kommen vom Sender"><i data-icon="gamepad"></i> Manuell (Funke)</button>
+              <button class="btn" id="btnSoft" title="Tempo stellst du hier ein, das Ruder kommt von der Funke"><i data-icon="gauge"></i> Manuell Soft (Tempo)</button>
               <button class="btn" id="btnStop"><i data-icon="stop"></i> Stopp</button>
               <button class="btn" id="btnRth"><i data-icon="home"></i> Return Home</button>
+              <div class="soft-row" id="softRow" hidden>
+                <label for="softRange">Tempo</label>
+                <button class="btn" id="softMinus" aria-label="Langsamer">−</button>
+                <input type="range" id="softRange" min="0" max="10" step="0.5" value="0">
+                <button class="btn" id="softPlus" aria-label="Schneller">+</button>
+                <b id="softTxt">0.0</b>
+                <button class="btn" id="softZero">0</button>
+                <small class="muted" id="softHint">Das Ruder steuerst du mit der Funke.</small>
+              </div>
               <button class="btn danger" id="btnEstop"><i data-icon="alert"></i> NOT-AUS</button>
             </div>
           </div>
@@ -343,6 +354,7 @@
       <!-- ================= TUNING ================= -->
       <section id="view-tuning" class="view">
         <div class="notice">Mockup: Die Verläufe rechnet ein einfaches <b>Platzhalter-Boot</b> im Browser, nicht das echte Boot. Die Standardwerte sind Startwerte für die Firmware und noch nicht am Boot abgestimmt. Alle Tempo-Werte sind in km/h, unabhängig vom Einheiten-Knopf.</div>
+        <div class="card tune-mode" id="tuneMode"></div>
         <div class="card tune-bar" id="tuneBar"></div>
         <div class="tune-layout">
           <div class="tune-cards" id="tuneCards"></div>
@@ -350,6 +362,8 @@
             <div class="card" id="tuneRun">
               <div class="card-head"><h3 id="tuneRunTitle">Sprungtest</h3><span class="tag" id="tuneRunTag">bereit</span></div>
               <p class="muted small" id="tuneRunHint">Wähle links bei einem Regler «Test starten». Der Test läuft mit dem <b>gesendeten</b> Satz, nicht mit dem Entwurf.</p>
+              <div class="tune-gps"><label for="tuneGps">GPS-Rate (Annahme für Tempo und Bahn)</label>
+                <select id="tuneGps"><option value="1" selected>1 Hz (Werkseinstellung, nicht geprüft)</option><option value="5">5 Hz</option><option value="10">10 Hz</option></select></div>
               <div class="chart-box tune-chart"><canvas id="chTuneMain"></canvas></div>
               <div class="chart-box tune-chart small"><canvas id="chTuneParts"></canvas></div>
               <div class="stat-row" id="tuneMetrics"></div>

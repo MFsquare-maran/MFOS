@@ -90,7 +90,7 @@
       desc: 'Wie die Sensorwerte aufbereitet werden.',
       params: [
         p('filt.headingAlpha', 'Heading-Tiefpass', '', 0, 0.99, 0.01, 0.9, '0 = aus, näher an 1 = träger'),
-        p('filt.compassBlend', 'Kompass-Anteil', '', 0, 1, 0.005, 0.02, 'Anteil Kompass gegenüber Gyro (klein = Gyro dominiert)', { noSim: true }),
+        p('filt.compassBlend', 'Kompass-Anteil', '', 0, 1, 0.005, 0.02, 'Anteil Kompass gegenüber Gyro (klein = Gyro dominiert). Die Firmware mischt den Gyro noch nicht ein, heute gilt nur der Kompass', { noSim: true }),
         p('filt.gpsSpeedAlpha', 'GPS-Tempo-Filter', '', 0, 0.95, 0.05, 0.5, '0 = aus'),
         p('filt.gpsCourseMinSpeed', 'GPS-Kurs ab Tempo', 'km/h', 0, 10, 0.5, 2, 'darunter ist der GPS-Kurs unzuverlässig', { noSim: true })
       ] },

@@ -210,8 +210,8 @@
     if (run && run.playing) return 'Ein Test läuft';
     if (!s.online) return 'Boot offline';
     if (s.mode === 'ESTOP') return 'NOT-AUS aktiv';
+    if (s.mode !== 'TUNE') return 'erst den Tuning-Modus starten';
     if (!s.armed) return 'Boot ist nicht scharf';
-    if (s.mode !== 'AUTO') return 'nur im Modus AUTO (Mission läuft)';
     return null;
   }
   let lockKey = '';
@@ -220,7 +220,7 @@
     if (key === lockKey) return; lockKey = key;
     $('#tuneCards').querySelectorAll('[data-act="test"]').forEach(b => { b.disabled = !!r; b.title = r ? 'Gesperrt: ' + r : ''; });
     if (!run) $('#tuneRunHint').innerHTML = r
-      ? `<span class="warn-txt">Sprungtest gesperrt: ${r}.</span> Er läuft nur bei scharfem Boot im Modus AUTO.`
+      ? `<span class="warn-txt">Sprungtest gesperrt: ${r}.</span> Er läuft nur im Tuning-Modus bei scharfem Boot (Leiste oben).`
       : 'Wähle links bei einem Regler «Test starten». Der Test läuft mit dem <b>gesendeten</b> Satz, nicht mit dem Entwurf.';
   }
 
@@ -231,14 +231,14 @@
     const sc = M.tuneSim.SCEN[g.id], disp = g.id === 'speed' ? `${M.fmtSpd(size, 2)} ${M.spdUnit()}` : `${M.fmt(size, 0)} ${g.test.unit}`;
     const ok = await M.confirm({
       title: 'Sprungtest starten?',
-      text: `${g.title}: ${g.test.text}${disp}. Das Boot reagiert sofort mit dem gesendeten Satz (Rev ${s.tune.rev}), Dauer etwa ${sc.pre + sc.dur} s. Der Test bricht bei NOT-AUS, Entschärfen, Moduswechsel und Verbindungsverlust ab.`,
-      check: 'Das Wasser ist frei, ich habe den NOT-AUS in Reichweite.', confirmLabel: 'Test starten'
+      text: `${g.title}: ${g.test.text}${disp}. Das Boot reagiert sofort mit dem gesendeten Satz (Rev ${s.tune.rev}), Dauer etwa ${sc.pre + sc.dur} s. Der Test bricht bei NOT-AUS, Entschärfen, Ende des Tuning-Modus und Verbindungsverlust ab.`,
+      check: 'Das Boot ist im Blick und der NOT-AUS in Reichweite.', confirmLabel: 'Test starten'
     });
     if (!ok) return;
     if (changedKeys(g).length) M.toast('Der Test läuft mit dem gesendeten Satz, nicht mit dem Entwurf', 'warn');
     const sent = M.actions.tuneStep(`Sprungtest ${g.title}`, () => {
       if (lockReason() && !(run && run.playing)) return M.toast('Sprungtest nicht gestartet: ' + lockReason(), 'warn');
-      play(g, size, M.tuneSim.run(g.id, size, { ...s.tune.cur }), s.tune.rev, disp);
+      play(g, size, M.tuneSim.run(g.id, size, { ...s.tune.cur }, { gpsHz: Number($('#tuneGps').value) }), s.tune.rev, disp);
     });
     if (!sent) return;
     $('#tuneRunTag').textContent = 'wartet auf Quittung'; $('#tuneRunTag').className = 'tag warn';
@@ -270,7 +270,7 @@
     if (!s.online) return 'Verbindung verloren';
     if (s.mode === 'ESTOP') return 'NOT-AUS';
     if (!s.armed) return 'Boot entschärft';
-    if (s.mode !== 'AUTO') return 'Modus gewechselt';
+    if (s.mode !== 'TUNE') return 'Tuning-Modus beendet';
     if (M.currentView !== 'tuning') return 'Seite verlassen';
     return null;
   }
@@ -301,6 +301,7 @@
       if (m.settle == null) v.push(['w', 'Der Verlauf beruhigt sich im Testzeitraum nicht (±5 %). Ki prüfen oder Kp senken.']);
       if (m.rise != null && m.rise > r.scen.dur / 2) v.push(['w', 'Sehr träge: Kp oder Vorsteuerung erhöhen.']);
       if (Math.abs(m.sse) > 0.05 * Math.abs(r.sp[r.sp.length - 1] - r.pv[0] || 1) && m.settle != null) v.push(['w', 'Bleibende Abweichung: Ki erhöhen (oder mehr Zeit).']);
+      if ((g.id === 'speed' || g.id === 'track') && m.rise != null && m.rise * r.gpsHz < 4) v.push(['w', `Nur ${M.fmt(m.rise * r.gpsHz, 0)} GPS-Messpunkte im Anstieg (GPS ${r.gpsHz} Hz): Kennzahlen unsicher, GPS-Rate erhöhen.`]);
       if (r.limited > 0.5) v.push(['w', `Die Stellgrösse war ${M.fmt(r.limited, 1)} s am Anschlag: Grenzen oder Verstärkung prüfen.`]);
       if (!v.length) v.push(['o', 'Unauffällig: kein starkes Überschwingen, beruhigt sich, keine Dauer-Abweichung.']);
     }
@@ -360,12 +361,43 @@
     M.TUNE_DEFS.forEach(d => { if (draft[d.key] === lastCur[d.key]) draft[d.key] = s.tune.cur[d.key]; });
     lastCur = { ...s.tune.cur }; sync();
   });
-  M.on('tick', () => { if (M.currentView === 'tuning') { lockUpdate(); const w = abortReason(); if (w) abort(w); } });
+  M.on('tick', () => { if (M.currentView === 'tuning') { renderMode(); lockUpdate(); const w = abortReason(); if (w) abort(w); } });
   M.on('units', () => { syncTest(); if (run && chMain) { setupAxes(run.g, run.res); draw(); } });
   M.on('theme', rebuildCharts);
   M.on('view', id => {
-    if (id === 'tuning') { ensureCharts(); sync(); setTimeout(() => { if (chMain) { chMain.resize(); chParts.resize(); } }, 30); }
-    else if (run && run.playing) abort('Seite verlassen');
+    if (id === 'tuning') { ensureCharts(); sync(); renderMode(); setTimeout(() => { if (chMain) { chMain.resize(); chParts.resize(); } }, 30); }
+    else {
+      if (run && run.playing) abort('Seite verlassen');
+      if (s.mode === 'TUNE') { M.actions.tuneLeave('Seite verlassen'); M.toast('Tuning-Modus beendet, Boot entschärft', 'info'); }
+    }
+  });
+  M.on('tick', renderMode);
+
+  /* =================== Tuning-Modus (Leiste oben) =================== */
+  let modeKey = '';
+  function renderMode() {
+    if (M.currentView !== 'tuning') return;
+    const m = s.mode === 'TUNE', est = s.mode === 'ESTOP';
+    const key = [m, s.armed, est, s.online, s.test.active, s.mode].join('|');
+    if (key === modeKey) return; modeKey = key;
+    let blockWhy = null;
+    if (!m) blockWhy = !s.online ? 'Boot offline' : est ? 'NOT-AUS aktiv – erst freigeben' : s.test.active ? 'Testmodus aktiv' : s.armed ? 'Boot ist scharf – erst entschärfen' : s.mode !== 'STOP' ? 'Boot fährt – erst stoppen' : null;
+    $('#tuneMode').classList.toggle('on', m);
+    $('#tuneMode').innerHTML = m
+      ? `<div><b class="warn-txt">Tuning-Modus aktiv</b><div class="muted small">${s.armed ? '<b class="ok-txt">Scharf</b>: Sprungtests sind freigegeben.' : 'Boot ist <b>nicht scharf</b>. Schalte es scharf, um Sprungtests zu fahren.'} Verlässt du die Seite, wird der Tuning-Modus beendet und das Boot entschärft.</div></div>
+         <span class="grow"></span>
+         <button class="btn ${s.armed ? 'ghost' : 'primary'}" data-m="${s.armed ? 'disarm' : 'arm'}" ${est ? 'disabled' : ''}>${s.armed ? 'Entschärfen' : 'Scharf schalten'}</button>
+         <button class="btn" data-m="leave">Tuning-Modus beenden</button>`
+      : `<div><b>Tuning-Modus</b><div class="muted small">${blockWhy ? `<span class="warn-txt">Gesperrt: ${blockWhy}</span>` : 'Für Sprungtests: Tuning-Modus starten, dann das Boot hier scharf schalten (mit Checkliste). Eine Mission ist dafür nicht nötig.'}</div></div>
+         <span class="grow"></span><button class="btn primary" data-m="enter" ${blockWhy ? 'disabled' : ''}>Tuning-Modus starten</button>`;
+    lockKey = ''; lockUpdate();
+  }
+  $('#tuneMode').addEventListener('click', async e => {
+    const b = e.target.closest('[data-m]'); if (!b || b.disabled) return;
+    if (b.dataset.m === 'enter') M.actions.tuneEnter();
+    else if (b.dataset.m === 'leave') { if (run && run.playing) abort('Tuning-Modus beendet'); M.actions.tuneLeave('Beendet'); }
+    else if (b.dataset.m === 'disarm') M.actions.disarm();
+    else if (b.dataset.m === 'arm') { if (await M.preflight('tune')) M.actions.arm(); }
   });
 
   build();

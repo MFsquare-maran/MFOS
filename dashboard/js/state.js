@@ -80,7 +80,7 @@
     { id: 5, name: 'Alle blinken', desc: 'Alle langsam (500 ms)', lamps: 'rgww:blink' }
   ];
   M.MODES = {
-    MANUAL: 'Manuell (RC)', AUTO: 'Autonom', RTH: 'Return Home', STOP: 'Gestoppt', ESTOP: 'NOT-AUS'
+    MANUAL: 'Manuell (Funke)', SOFT: 'Manuell Soft (Tempo)', AUTO: 'Autonom', RTH: 'Return Home', STOP: 'Gestoppt', TUNE: 'Tuning', ESTOP: 'NOT-AUS'
   };
 
   /* ---------- Zustand ---------- */
@@ -110,6 +110,7 @@
     params: defaultParams(), paramSync: 'ok',
     // Regler-Tuning: aktiver Satz im Boot (cur) und letzter guter Satz (good), siehe docs/schnittstelle.md 6a
     tune: { ...M.tuneStore.load(), rev: 1 },
+    soft: { speed: 0 },                                   // Soll-Tempo im Modus SOFT (km/h), Ruder kommt von der Funke
     // Verbindung: das Boot kann ueber LTE (Modem) oder WLAN (ESP32) senden
     net: { mode: 'auto', active: 'lte', switchedAt: null,
            wifi: { ssid: '', saved: false, state: 'none', rssi: -60, ip: '', error: '' } },
@@ -204,9 +205,11 @@
     } else {
       s.targetBrg = null;
       if (s.mode === 'MANUAL') { thr = 25 + 15 * Math.sin(s.now / 9000); rud = 50 + 28 * Math.sin(s.now / 5500); }
+      else if (s.mode === 'SOFT') { thr = s.soft.speed / 14 * 100; rud = 50 + 20 * Math.sin(s.now / 6000); }   // Gas aus dem Soll-Tempo, Ruder = simulierte Funke
     }
     thr = Math.min(thr, P.maxThrottle);                                  // die stärkere Begrenzung gewinnt
     if (s.test.active) { thr = s.test.motor; rud = s.test.servo; s.target = null; s.targetBrg = null; }   // Test: Handsteuerung
+    if (s.mode !== 'SOFT') s.soft.speed = 0;
     s.cmd.throttle = thr; s.cmd.rudder = rud;
 
     // ---- Bewegung (im Testmodus steht das Boot gesichert still) ----
@@ -410,18 +413,52 @@
     disarm() {
       send('Entschärfen', () => {
         s.armed = false;
-        if (s.mode === 'AUTO' || s.mode === 'RTH') { s.mode = 'STOP'; s.endReason = 'Entschärft'; }
+        if (s.mode === 'AUTO' || s.mode === 'RTH' || s.mode === 'MANUAL' || s.mode === 'SOFT') { s.mode = 'STOP'; s.endReason = 'Entschärft'; }
         M.log('Boot entschärft', 'ok');
       }, 400);
     },
+    // Tuning-Modus: nur von der Seite "Tuning" aus; Boot entschaerft und gestoppt. Scharf schalten geht danach wie gewohnt.
+    tuneEnter() {
+      if (!s.online) return M.toast('Boot offline', 'warn');
+      if (s.mode === 'ESTOP') return M.toast('Erst NOT-AUS freigeben', 'warn');
+      if (s.armed || s.mode !== 'STOP') return M.toast('Für das Tuning muss das Boot entschärft und gestoppt sein', 'warn');
+      if (s.test.active) return M.toast('Erst den Testmodus beenden', 'warn');
+      send('Tuning-Modus starten', () => { s.mode = 'TUNE'; s.endReason = ''; M.log('Tuning-Modus gestartet', 'info'); }, 500);
+    },
+    tuneLeave(why = 'Beendet') {
+      if (s.mode !== 'TUNE') return;
+      s.mode = 'STOP'; s.armed = false; s.endReason = 'Tuning beendet';
+      M.log(`Tuning-Modus beendet: ${why} (Boot entschärft)`, 'info'); M.emit('tick');
+    },
     start() {
+      if (s.mode === 'TUNE') return M.toast('Im Tuning-Modus gibt es keine Mission – erst Tuning beenden', 'warn');
       if (!s.armed) return M.toast('Boot ist nicht scharf – erst scharf schalten', 'warn');
       if (!s.mission.wps.length) return M.toast('Keine Wegpunkte geladen', 'warn');
       if (s.mode === 'ESTOP') return M.toast('Erst NOT-AUS freigeben', 'warn');
       send('Mission starten', () => { s.mode = 'AUTO'; if (s.mission.active >= s.mission.wps.length) s.mission.active = 0; M.emit('mission'); });
     },
+    // Manuell: Gas und Ruder kommen vom Sender (Funke); das Dashboard steuert nichts, zeigt nur an.
+    manual() {
+      if (!s.armed) return M.toast('Boot ist nicht scharf – erst scharf schalten', 'warn');
+      if (s.mode === 'ESTOP') return M.toast('Erst NOT-AUS freigeben', 'warn');
+      if (s.mode === 'TUNE') return M.toast('Im Tuning-Modus nicht möglich – erst Tuning beenden', 'warn');
+      send('Manuell (Funke)', () => { s.mode = 'MANUAL'; s.endReason = ''; s.target = null; M.log('Manueller Modus: der Sender steuert', 'warn'); }, 400);
+    },
+    // Manuell Soft: Tempo stellt das Dashboard ein (das Boot haelt es), das Ruder kommt von der Funke.
+    soft() {
+      if (!s.armed) return M.toast('Boot ist nicht scharf – erst scharf schalten', 'warn');
+      if (s.mode === 'ESTOP') return M.toast('Erst NOT-AUS freigeben', 'warn');
+      if (s.mode === 'TUNE') return M.toast('Im Tuning-Modus nicht möglich – erst Tuning beenden', 'warn');
+      send('Manuell Soft', () => { s.mode = 'SOFT'; s.soft.speed = 0; s.endReason = ''; s.target = null; M.log('Manuell Soft: Tempo vom Dashboard, Ruder von der Funke', 'warn'); }, 400);
+    },
+    setSoftSpeed(kmh) {
+      if (s.mode !== 'SOFT') return;
+      const v = Math.round(M.clamp(kmh, 0, M.speedLimit().kmh) * 10) / 10;
+      send(`Tempo ${M.fmtSpd(v)} ${M.spdUnit()}`, () => { if (s.mode === 'SOFT') s.soft.speed = v; }, 400);
+    },
     stop() { send('Stopp', () => { s.mode = 'STOP'; s.endReason = 'Manuell gestoppt'; }, 300); },
     rth() {
+      if (s.mode === 'TUNE') return M.toast('Im Tuning-Modus nicht möglich – erst Tuning beenden', 'warn');
       if (!s.armed) return M.toast('Boot ist nicht scharf – erst scharf schalten', 'warn');
       send('Return Home', () => { s.mode = 'RTH'; }, 300);
     },

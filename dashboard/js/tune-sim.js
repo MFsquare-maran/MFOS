@@ -8,14 +8,18 @@
    schnittstelle.md 6a) und diese Datei entfaellt.
 
    Reine Rechnung, kein DOM.  M.tuneSim.run(ctrl, size, werte) -> Ergebnis.
-   Regeltakt 20 Hz; Tempo-Regler und Bahn-Regler arbeiten mit 5 Hz (GPS).
+   Regeltakt 100 Hz wie die Firmware (controllerTask, 10 ms). Magnetometer
+   40 Hz (Code: sampleRate 6), Gyro im Takt. Tempo-Regler und Bahn-Regler
+   arbeiten mit der GPS-Rate (Standard 1 Hz: der Code stellt nichts am M8N
+   ein, nicht geprueft; waehlbar 1, 5, 10 Hz).
    =================================================================== */
 (function () {
   'use strict';
   const M = (window.MFOS = window.MFOS || {});
 
-  const DT = 0.05;                 // Regeltakt
-  const GPS_EVERY = 4;             // Tempo und Position alle 4 Takte = 5 Hz
+  const DT = 0.01;                 // Regeltakt 100 Hz (TIC2_MS = 10 in main.cpp)
+  const MAG_HZ = 40;               // Magnetometer-Rate (LSM9DS1, sampleRate 6)
+  const REC_EVERY = 10;            // Aufzeichnung fuer die Anzeige: 10 Hz
   const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
   const wrap = a => (((a + 180) % 360) + 360) % 360 - 180;
   const rng = seed => { let x = seed >>> 0; return () => { x = (Math.imul(x, 1664525) + 1013904223) >>> 0; return x / 4294967296 - 0.5; }; };
@@ -40,21 +44,23 @@
   };
   const OUT = { speed: 'gas', course: 'rate', yaw: 'rudder', track: 'corr' };
 
-  function run(ctrl, size, T) {
+  function run(ctrl, size, T, opts) {
+    const gpsHz = (opts && opts.gpsHz) || 1, GPS_EVERY = Math.round(1 / DT / gpsHz);
     const g = k => T[k], sc = SCEN[ctrl], rnd = rng(1234 + ctrl.length);
     const maxThr = (M.state && M.state.params && M.state.params.maxThrottle) || 70;
     const n = Math.round((sc.pre + sc.dur) / DT);
-    const res = { ctrl, size, scen: sc, t: [], sp: [], pv: [], out: [], p: [], i: [], d: [], ff: [], pvTrue: [], limited: 0 };
+    const res = { ctrl, size, gpsHz, scen: sc, t: [], sp: [], pv: [], out: [], p: [], i: [], d: [], ff: [], pvTrue: [], limited: 0 };
 
     // Zustand des Platzhalter-Boots
     const st = { v: ctrl === 'speed' ? sc.sp0 : PLANT.refSpeed, gas: 0, rud: 0, r: 0, h: 0, y: ctrl === 'track' ? size : 0 };
     if (ctrl === 'speed') st.gas = Math.max(g('esc.startThr'), sc.sp0 / PLANT.fullSpeed * 100);
     // Reglerzustand
-    const c = { Is: 0, Ic: 0, Iy: 0, It: 0, vm: st.v, ym: st.y, hm: 0, gyroF: 0, gyroPrev: 0, gasCmd: st.gas, corr: 0, rateSp: 0, p: 0, i: 0, d: 0, ff: 0, out: 0, sp: 0 };
+    const c = { Is: 0, Ic: 0, Iy: 0, It: 0, vm: st.v, ym: st.y, hm: 0, mag: 0, gyroF: 0, gyroPrev: 0, gasCmd: st.gas, corr: 0, rateSp: 0, p: 0, i: 0, d: 0, ff: 0, out: 0, sp: 0 };
     let limitedTicks = 0;
 
+    c.hm = 0; c.mag = 0;
     for (let k = 0; k <= n; k++) {
-      const t = k * DT - sc.pre, stepped = t >= 0;
+      const t = Math.round(k * DT * 1000) / 1000 - sc.pre, stepped = t >= 0;
       const gps = k % GPS_EVERY === 0, dtG = DT * GPS_EVERY;
 
       /* ---- Messung ---- */
@@ -64,8 +70,10 @@
         c.ym = st.y;
       }
       const gyro = st.r + rnd() * 2 * PLANT.gyroNoise;
-      c.hm = g('filt.headingAlpha') * c.hm + (1 - g('filt.headingAlpha')) * st.h;
-      c.gyroF = 0.6 * c.gyroF + 0.4 * gyro;
+      if (Math.floor(k * MAG_HZ * DT) !== Math.floor((k - 1) * MAG_HZ * DT) || k === 0) c.mag = st.h;     // Magnetometer: neuer Wert nur mit 40 Hz
+      c.hm = g('filt.headingAlpha') * c.hm + (1 - g('filt.headingAlpha')) * c.mag;                       // Tiefpass je Regeltakt wie in der Firmware
+      const ga = Math.exp(-DT / 0.1);                                                                    // Gyro-Filter, ca. 0,1 s
+      c.gyroF = ga * c.gyroF + (1 - ga) * gyro;
 
       /* ---- Sollwerte des Sprungs ---- */
       let spSpeed = sc.sp0 || 0, spHdg = 0, spRate = 0, spTrack = 0;
@@ -150,7 +158,7 @@
       if (ctrl === 'track') st.y += (st.v / 3.6) * Math.sin(st.h * Math.PI / 180) * DT + PLANT.drift * DT;
 
       /* ---- Aufzeichnen (alle 2 Takte = 10 Hz), gezeigt ab 2 s vor dem Sprung ---- */
-      if (k % 2 === 0 && t >= -Math.min(2, sc.pre)) {
+      if (k % REC_EVERY === 0 && t >= -Math.min(2, sc.pre)) {
         const show = { speed: st.v, course: st.h, yaw: gyro, track: st.y }[ctrl];
         const tru = { speed: st.v, course: st.h, yaw: st.r, track: st.y }[ctrl];
         res.t.push(+t.toFixed(2)); res.sp.push(c.sp); res.pv.push(show); res.pvTrue.push(tru);

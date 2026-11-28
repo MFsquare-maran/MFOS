@@ -28,7 +28,7 @@ Dieses Dokument ist die **einzige Quelle der Wahrheit** für alles, was zwischen
 | Last Will | Topic `mfos/<id>/status`, Nutzlast `{"online": false}`, retained, QoS 1. Beim Verbinden meldet das Boot `{"online": true}` retained. |
 | Wiederverbinden | Mit wachsender Wartezeit (1 s bis 60 s), damit ein Fehler den Broker nicht überlastet. |
 
-Rechte (ACL im Broker): Ein Boot darf **nur** `mfos/<id>/telemetry`, `status`, `event`, `ack` schreiben und `mfos/<id>/cmd` lesen. Mehr geht nicht, auch nicht für ein anderes Boot.
+Rechte (ACL im Broker): Ein Boot darf **nur** `mfos/<id>/telemetry`, `status`, `event`, `ack`, `tune` schreiben und `mfos/<id>/cmd` lesen. Mehr geht nicht, auch nicht für ein anderes Boot.
 
 Diese Schnittstelle ist so beschrieben (Topics und JSON), dass sie nicht an einen bestimmten Server gebunden ist.
 
@@ -39,6 +39,7 @@ Topics, `<id>` ist die Boots-Kennung, zum Beispiel `mfos-1`:
 | `mfos/<id>/telemetry` | Boot → Server | 0 | Messwerte (Abschnitt 3) |
 | `mfos/<id>/status` | Boot → Server | 1, retained | `online`/`offline`; «offline» als Last Will |
 | `mfos/<id>/event` | Boot → Server | 1 | Ereignisse (Abschnitt 4) |
+| `mfos/<id>/tune` | Boot → Server | 1 | aufgezeichneter Verlauf eines Sprungtests (Abschnitt 6a) |
 | `mfos/<id>/cmd` | Server → Boot | 1 | Befehle (Abschnitt 5) |
 | `mfos/<id>/ack` | Boot → Server | 1 | Quittungen (Abschnitt 5) |
 
@@ -63,7 +64,7 @@ Eine JSON-Nachricht, flaches Objekt. Alle Schlüssel sind optional; fehlt einer,
 | `leak` | bool | – | Leck-Sensor am ADS1115, `ads.isWaterDetected()` | Zustand |
 | `cmd_throttle` | float | % 0–100 | an den ESC ausgegeben | schnell |
 | `cmd_rudder` | float | % 0–100, 50 = Mitte | an das Servo ausgegeben | schnell |
-| `mode` | string | – | `MANUAL`, `AUTO`, `RTH`, `STOP`, `ESTOP` | Zustand |
+| `mode` | string | – | `MANUAL`, `SOFT`, `AUTO`, `RTH`, `STOP`, `ESTOP` | Zustand |
 | `armed` | bool | – | scharf (Abschnitt 8) | Zustand |
 | `test` | bool | – | Testmodus aktiv | Zustand |
 | `wp_active` | int | 1-basiert | aktueller Wegpunkt | Zustand |
@@ -122,13 +123,16 @@ Das Boot quittiert **innerhalb von 2 s** auf `mfos/<id>/ack`:
 {"id": "c-1a2b", "ok": false, "error": "not_armed", "msg": "Boot ist nicht scharf"}
 ```
 
-Fehlercodes: `expired`, `not_armed`, `armed`, `estop_active`, `not_stopped`, `test_inactive`, `test_active`, `offline_link` (Befehl braucht Verbindung), `invalid_arg`, `no_wifi`, `busy`, `unsupported`.
+Fehlercodes: `no_run`, `wrong_mode`, `expired`, `not_armed`, `armed`, `estop_active`, `not_stopped`, `test_inactive`, `test_active`, `offline_link` (Befehl braucht Verbindung), `invalid_arg`, `no_wifi`, `busy`, `unsupported`.
 
 | `cmd` | `args` | Vorbedingung | Wirkung |
 |---|---|---|---|
 | `arm` | – | kein NOT-AUS, kein Testmodus | scharf schalten |
 | `disarm` | – | – | entschärfen; läuft eine Fahrt, wird sie gestoppt |
 | `start` | – | scharf, kein NOT-AUS, Mission vorhanden | Mission ab `wp_active` fahren; neuer Kurs beginnt bei 1 |
+| `manual` | – | scharf, kein NOT-AUS, nicht `TUNE` | Modus `MANUAL`: Gas und Ruder kommen vom Sender (SBUS), das Boot führt keine Mission aus. `maxThrottle` und alle Schranken gelten weiter |
+| `soft` | – | scharf, kein NOT-AUS, nicht `TUNE` | Modus `SOFT` («Manuell Soft»): das Boot hält ein vom Dashboard gesetztes **Tempo** (Tempo-Regler), das **Ruder** kommt vom Sender. Tempo beim Eintritt 0 |
+| `setSoftSpeed` | `kmh` 0 bis wirksames Tempo | Modus `SOFT` | Soll-Tempo setzen; das Boot begrenzt auf `cruiseSpeed`/`maxThrottle`. Das Tempo gilt nur solange die Verbindung steht: nach `linkTimeout` greift `failsafe` |
 | `stop` | – | – | Motor aus, Ruder Mitte, Modus `STOP` |
 | `rth` | – | scharf, kein NOT-AUS | zum Home-Punkt fahren, dann `STOP` |
 | `estop` | – | – | **sofort** Motor aus, entschärfen, Modus `ESTOP` |
@@ -151,7 +155,9 @@ Fehlercodes: `expired`, `not_armed`, `armed`, `estop_active`, `not_stopped`, `te
 | `tuneDefaults` | `group` (optional) | – | Standardwerte einer Gruppe oder aller Gruppen |
 | `tuneRestore` | – | – | «Letzter guter Satz» wiederherstellen |
 | `tuneMarkGood` | – | – | aktuellen Satz als «letzten guten» im Flash merken |
-| `tuneStep` | `ctrl`: `speed`/`course`/`yaw`/`track`, `size` | scharf, `AUTO`, kein NOT-AUS | Sprungtest starten (Abschnitt 6a) |
+| `tuneStep` | `ctrl`: `speed`/`course`/`yaw`/`track`, `size` | scharf, Modus `TUNE`, kein NOT-AUS | Sprungtest starten (Abschnitt 6a) |
+| `tuneMode` | `on`: `true`/`false` | `on: true` nur entschärft, `STOP`, kein NOT-AUS, kein Testmodus | Tuning-Modus ein/aus; aus: Modus `STOP`, entschärft |
+| `tuneFetch` | `run`, `from` (Teilstück ab dieser Nummer, optional) | Lauf liegt noch im Boot | Verlauf oder fehlende Teilstücke erneut senden (Abschnitt 6a) |
 | `tuneStop` | – | – | Sprungtest abbrechen, normale Regelung übernimmt |
 
 **`wps`:** Liste von `{"lat": 47.35, "lon": 8.68}` oder `{"home": true}`. Der Eintrag `home` bedeutet die jeweils aktuelle Home-Position und wird erst bei der Fahrt aufgelöst. Höchstens 100 Punkte.
@@ -212,10 +218,16 @@ Vorlage und Begründung: `docs/regler.md`. Die Werte heissen `<gruppe>.<name>` u
 - Das Boot meldet beim Start den vollen Satz im Ereignis `boot` (Feld `tune`) und nach jeder Änderung im Zustand (`tune_rev`, hochgezählt). Das Dashboard vergleicht Entwurf und aktiven Satz.
 - **Weiche Übernahme:** Neue Werte gelten ab dem nächsten Regeltakt, Integratoren werden dabei so nachgeführt, dass das Stellsignal nicht springt.
 - **Letzter guter Satz:** Das Boot hält zwei Sätze im Flash, den aktuellen und den letzten als gut markierten (`tuneMarkGood`).
-- **Sprungtest** (`tuneStep`): nur bei scharfem Boot im Modus `AUTO` und nur mit Abbruch durch `tuneStop`, NOT-AUS, Entschärfen, Verbindungsverlust und Ablauf von 30 s. Grösse `size`: Tempo-Sprung in km/h, Kurssprung in °, Drehraten-Sprung in °/s, Startabstand zur Linie in m (Grenzen in `tune-defs.js`, `test`).
-- **Tuning-Telemetrie** (Topic `telemetry`, nur solange der Sprungtest läuft oder die Seite Tuning `tuneStep` gestartet hat, bis 10 Hz): `tune: {ctrl, sp, pv, out, p, i, d}` mit Soll, Ist, Ausgang und den Anteilen. Sie wird nicht aufgezeichnet.
+- **Sprungtest** (`tuneStep`): nur im Modus `TUNE` bei scharfem Boot (keine Mission nötig) und nur mit Abbruch durch `tuneStop`, NOT-AUS, Entschärfen, Ende von `TUNE`, Verbindungsverlust und Ablauf von 90 s. Grösse `size`: Tempo-Sprung in km/h, Kurssprung in °, Drehraten-Sprung in °/s, Startabstand zur Linie in m (Grenzen in `tune-defs.js`, `test`).
+- **Aufzeichnung im Boot, Upload danach** (nicht live): Live-Messwerte mit 10 bis 100 Hz über LTE und MQTT gehen verloren oder kommen durcheinander. Darum zeichnet das **Boot** den Sprungtest selbst auf, mit **eigenen Zeitstempeln** (ms seit Teststart) im Regeltakt, und schickt den fertigen Verlauf **nach dem Test** (oder nach Abbruch) auf `mfos/<id>/tune`, QoS 1. Während des Tests meldet es nur Zustand und Ereignisse (`tune_started`, `tune_ended`), keine Messwerte.
+  - **Abtastrate** je Regler (Vorschlag): Gierrate 50 Hz, Kurs 25 Hz, Tempo 10 Hz, Bahn 10 Hz. Die höchste Rate, die der Regler wirklich rechnet, nie mehr als nötig, damit der Puffer im RAM klein bleibt (Ziel höchstens 2000 Zeilen, als 16-Bit-Zahlen mit Skalierung, etwa 40 KB; ob das im ESP32-RAM Platz hat, ist **nicht geprüft**).
+  - **Kopf** (`kind: "tune_run"`): `{run, ctrl, size, set_rev, rate_hz, n, chunks, t0_ts, gps_hz, fields, scale, reason}`. `t0_ts` ist der Zeitpunkt des Sprungs (Epoch ms, wie `ts` der Befehle), `reason` der Grund des Endes (`done`, `stopped`, `estop`, `disarmed`, `link`, `timeout`).
+  - **Teilstücke** (`kind: "tune_chunk"`): `{run, seq, rows}` mit höchstens etwa 4 KB je Nachricht. `rows` sind Zeilen in der Reihenfolge von `fields`; Zeit `t` in ms seit Sprung.
+  - **Felder** (Rohwerte und Regleranteile): `t`, `sp` (Soll), `pv_raw` (Messwert roh), `pv` (gefiltert, so wie der Regler ihn sieht), `out` (Ausgang des Reglers vor den Grenzen), `act` (Ausgang nach Rampe, Slew und Grenzen, das was an ESC oder Servo geht), `p`, `i`, `d`, `ff`, dazu `gyro`, `heading`, `gps_speed`, `gps_fresh` (1, wenn der Wert in diesem Takt ein neues GPS-Ergebnis ist; so erkennt das Dashboard die echte GPS-Rate).
+  - **Vollständigkeit:** Das Dashboard prüft `seq` lückenlos und fordert Fehlendes mit `tuneFetch` (`run`, `from`) nach. Das Boot hält **den letzten Lauf** im RAM, bis der nächste Test beginnt oder es neu startet. Danach `no_run`.
+  - Der Verlauf wird **nicht** als Fahrt aufgezeichnet und nicht dauerhaft gespeichert; das Dashboard hält ihn im Browser (Vergleich mehrerer Läufe und CSV-Export sind **vorgesehen, noch nicht gebaut**).
 - Ereignisse: `tune_started`, `tune_ended` (mit `reason`: `done`, `stopped`, `estop`, `disarmed`, `link`, `timeout`).
-- Die Kennzahlen (Anstiegszeit, Überschwingen, Beruhigungszeit, bleibende Abweichung) rechnet das Dashboard aus der Tuning-Telemetrie.
+- Die Kennzahlen (Anstiegszeit, Überschwingen, Beruhigungszeit, bleibende Abweichung) rechnet das Dashboard aus dem **gefilterten Messwert `pv`** des aufgezeichneten Laufs (nicht aus wahren Werten, die es am echten Boot nicht gibt). Es warnt, wenn zu wenige GPS-Messpunkte (`gps_fresh`) im Anstieg liegen.
 
 ## 7. Licht, Pumpe, Aktoren
 
@@ -225,7 +237,7 @@ Vorlage und Begründung: `docs/regler.md`. Die Werte heissen `<gruppe>.<name>` u
 
 ## 8. Modi und «scharf»
 
-Modi (`mode`): `MANUAL` (Fernsteuerung), `AUTO` (Mission), `RTH` (Return Home), `STOP`, `ESTOP`.
+Modi (`mode`): `MANUAL` (Fernsteuerung, Gas und Ruder vom Sender), `SOFT` (Tempo vom Dashboard, Ruder vom Sender), `AUTO` (Mission), `RTH` (Return Home), `TUNE` (Tuning, nur von der Seite Tuning aus), `STOP`, `ESTOP`.
 
 | Regel | Beschreibung |
 |---|---|
@@ -234,9 +246,19 @@ Modi (`mode`): `MANUAL` (Fernsteuerung), `AUTO` (Mission), `RTH` (Return Home), 
 | `estop` | setzt `armed = false`, Modus `ESTOP` |
 | `release` | Modus `STOP`, `armed` bleibt `false` |
 | `arm` | abgelehnt bei `ESTOP` oder aktivem Testmodus |
-| `disarm` | `armed = false`; war der Modus `AUTO` oder `RTH`, wird er `STOP` |
+| `disarm` | `armed = false`; war der Modus `AUTO`, `RTH`, `MANUAL` oder `SOFT`, wird er `STOP` |
+| `tuneMode` an | nur aus `STOP`, entschärft; danach darf mit `arm` scharf geschaltet werden. In `TUNE` werden `start` und `rth` mit `wrong_mode` abgelehnt |
+| Tuning beendet | `tuneMode` aus, Verbindungsverlust, NOT-AUS oder Seitenwechsel: Modus `STOP` (bzw. `ESTOP`), `armed = false` |
 | Mission zu Ende | bei `loop = false` oder nur einem Punkt: Modus `STOP` |
 | Return Home erreicht | Modus `STOP` |
+
+## 8a. Checkliste vor dem Scharfschalten
+
+Das Dashboard zeigt sie bei jedem «Scharf schalten» (Live und Tuning). Sie ist ein Schritt für den **Menschen**; das Boot kennt sie nicht und darf sich nicht darauf verlassen (Schranken gelten im Boot).
+
+- **Automatisch geprüft** (das Dashboard liest die Telemetrie und den Zustand selbst): Verbindung, Alter der letzten Meldung (> 10 s sperrt), GPS (Fix, Satelliten, HDOP), Leck-Sensor, Akku (`battWarn`/`battCrit`), ESC-Temperatur, Funksignal, Lage (Roll/Pitch > 20° warnt), Innenraum-Temperatur, Testmodus aus. Bei Fahrt zusätzlich: Kurs geladen, Abstand Boot–Home innerhalb `geofence`, alle Wegpunkte innerhalb `geofence`, Akku reicht für die Kurslänge (Rest geteilt durch nötige Zeit, unter 1,0 sperrt, unter 1,5 warnt), Kurs/Home/Einstellungen vom Boot bestätigt. ✕ sperrt das Scharfschalten, ! warnt nur.
+- **Von Hand abzuhaken** (alle Pflicht). Fahrt: Wasser und Propeller frei; Rumpf dicht und Akku gesichert; Kurs und Home geprüft. Tuning zusätzlich: Sender an und NOT-AUS in Reichweite, Rückholplan bekannt, mindestens 50 m freie Wasserfläche, Boot während der Tests beobachten (bei Auffälligkeit NOT-AUS).
+- Umgesetzt in `dashboard/js/ui.js` (`M.preflight`, `M.preflightAuto`, `M.preflightChecks`).
 
 ## 9. Sicherheitsanforderungen an die Firmware
 

@@ -29,6 +29,8 @@
     bolt: '<path d="M13 2 4 14h7l-1 8 9-12h-7z"/>',
     sliders: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
     replay: '<path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="m10 9 5 3-5 3z"/>',
+    gamepad: '<rect x="3" y="8" width="18" height="10" rx="5"/><path d="M8 11v4M6 13h4"/><circle cx="15" cy="12" r="1"/><circle cx="17.5" cy="14" r="1"/>',
+    gauge: '<path d="M4 18a9 9 0 1 1 16 0"/><path d="M12 18V9"/><circle cx="12" cy="18" r="1.3"/>',
     dial: '<path d="M4 18a9 9 0 1 1 16 0"/><path d="m12 18 4-6"/><circle cx="12" cy="18" r="1.3"/>',
     flask:'<path d="M9 3h6M10 3v6L5 19a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-10V3"/><path d="M7.5 15h9"/>',
     lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
@@ -99,13 +101,18 @@
     wrap.className = 'modal-back';
     wrap.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${o.title}">
       <h2>${o.title}</h2><p>${o.text || ''}</p>
+      ${o.auto ? `<ul class="pf-auto">${o.auto.map(a => `<li class="pf-${a.state}"><b>${{ ok: '✓', warn: '!', fail: '✕' }[a.state]}</b><span>${a.label}</span><em>${a.text}</em></li>`).join('')}</ul>` : ''}
+      ${o.checks ? `<div class="pf-checks">${o.checks.map(c => `<label class="chk big"><input type="checkbox" class="mdChk"> ${c}</label>`).join('')}</div>` : ''}
+      ${o.auto && o.auto.some(a => a.state === 'fail') ? '<p class="crit-txt small">Gesperrt: Eine Voraussetzung ist nicht erfüllt (✕).</p>' : ''}
       ${o.check ? `<label class="chk big"><input type="checkbox" id="mdCheck"> ${o.check}</label>` : ''}
       ${o.type ? `<p class="small muted">Zur Bestätigung <b>${o.type}</b> eintippen:</p><input type="text" id="mdType" class="cname" autocomplete="off" autocapitalize="characters" spellcheck="false">` : ''}
       <div class="btn-row"><button class="btn ${o.danger ? 'danger' : 'primary'}" id="mdOk" disabled>${o.confirmLabel || 'Bestätigen'}</button>
       <button class="btn ghost" id="mdNo">Abbrechen</button></div></div>`;
     document.body.appendChild(wrap);
     const ok = wrap.querySelector('#mdOk'), chk = wrap.querySelector('#mdCheck'), typ = wrap.querySelector('#mdType');
-    const valid = () => (!chk || chk.checked) && (!typ || typ.value.trim().toUpperCase() === o.type);
+    const checks = [...wrap.querySelectorAll('.mdChk')], blocked = !!(o.auto && o.auto.some(a => a.state === 'fail'));
+    const valid = () => !blocked && (!chk || chk.checked) && checks.every(c => c.checked) && (!typ || typ.value.trim().toUpperCase() === o.type);
+    checks.forEach(c => c.addEventListener('change', () => { ok.disabled = !valid(); }));
     const upd = () => { ok.disabled = !valid(); };
     const done = v => { document.removeEventListener('keydown', onKey); wrap.remove(); resolve(v); };
     const onKey = e => { if (e.key === 'Escape') done(false); if (e.key === 'Enter' && valid()) done(true); };
@@ -117,6 +124,59 @@
     wrap.querySelector('#mdNo').addEventListener('click', () => done(false));
     wrap.addEventListener('mousedown', e => { if (e.target === wrap) done(false); });
     (typ || chk || ok).focus();
+  });
+
+  /* ---------- Checkliste vor dem Scharfschalten ----------
+     kind: 'mission' (Fahrt mit Kurs) | 'tune' (Tuning, Boot faehrt Sprungtests).
+     Obere Zeilen prueft das Dashboard aus der Telemetrie (✕ sperrt), die Haken setzt der Mensch.
+     Das Boot kennt die Liste nicht, sie ist ein Schritt fuer den Bediener (docs/schnittstelle.md 8a). */
+  M.preflightAuto = kind => {
+    const P = s.params, row = (label, state, text) => ({ label, state, text });
+    const list = [
+      row('Verbindung', s.online ? 'ok' : 'fail', s.online ? (s.net.active === 'wifi' ? 'WLAN' : 'LTE') : 'Boot offline'),
+      row('GPS', !s.gps.fix ? 'fail' : s.gps.sats < 8 || s.gps.hdop > 2 ? 'warn' : 'ok', s.gps.fix ? `${s.gps.sats} Satelliten, HDOP ${s.gps.hdop.toFixed(1)}` : 'kein Fix'),
+      row('Leck-Sensor', s.leak ? 'fail' : 'ok', s.leak ? 'LECK!' : 'trocken'),
+      row('Akku', s.power.v <= P.battCrit ? 'fail' : s.power.v <= P.battWarn ? 'warn' : 'ok', `${s.power.v.toFixed(1)} V · ${M.fmt(M.soc(s.power.v), 0)} %`),
+      row('ESC-Temperatur', s.temps.esc >= P.escCrit ? 'fail' : s.temps.esc >= P.escWarn ? 'warn' : 'ok', `${s.temps.esc.toFixed(0)} °C`),
+      row('Funksignal', s.net.active === 'lte' && s.lte.dbm < -105 ? 'warn' : 'ok', s.net.active === 'lte' ? `${s.lte.dbm.toFixed(0)} dBm` : 'WLAN')
+    ];
+    const age = Math.round((s.now - s.lastSeen) / 1000);
+    list.splice(1, 0, row('Daten aktuell', !s.online || age > 10 ? 'fail' : age > 3 || s.latency > 2000 ? 'warn' : 'ok', `letzte Meldung vor ${age} s, ${Math.round(s.latency)} ms`));
+    list.push(
+      row('Lage (Roll/Pitch)', Math.max(Math.abs(s.roll), Math.abs(s.pitch)) > 20 ? 'warn' : 'ok', `${s.roll.toFixed(0)}° / ${s.pitch.toFixed(0)}°`),
+      row('Innenraum', s.temps.hull >= P.hullWarn ? 'warn' : 'ok', `${s.temps.hull.toFixed(0)} °C`),
+      row('Testmodus', s.test.active ? 'fail' : 'ok', s.test.active ? 'aktiv, erst beenden' : 'aus'));
+    if (kind === 'mission') {
+      const wps = M.resolveWps(s.mission.wps, s.home), dHome = M.geo.dist(s.pos, s.home);
+      list.push(row('Kurs', wps.length ? 'ok' : 'fail', wps.length ? `${wps.length} Wegpunkte` : 'keine Wegpunkte geladen'));
+      list.push(row('Home-Abstand', dHome > P.geofence ? 'fail' : dHome > P.geofence / 2 ? 'warn' : 'ok', `${M.fmtDist(dHome)} (Geofence ${M.fmtDist(P.geofence)})`));
+      if (wps.length) {
+        const out = wps.filter(w => M.geo.dist(w, s.home) > P.geofence).length;
+        list.push(row('Wegpunkte im Geofence', out ? 'fail' : 'ok', out ? `${out} ausserhalb` : 'alle innerhalb'));
+        let len = 0, p = s.pos; wps.forEach(w => { len += M.geo.dist(p, w); p = w; });
+        const need = len / Math.max(M.speedLimit().kmh / 3.6, 0.1), have = Math.max(0, P.battCap - s.power.mah) / Math.max(s.power.a * 1000, 1000) * 3600;
+        list.push(row('Akku reicht für den Kurs', have < need ? 'fail' : have < need * 1.5 ? 'warn' : 'ok', `${M.fmtDist(len)}, ca. ${M.fmtDur(need)} nötig, Rest ca. ${M.fmtDur(have)}`));
+      }
+      const pend = [s.mission.sync, s.homeSync, s.paramSync].some(x => x && x !== 'ok');
+      list.push(row('Boot hat alles bestätigt', pend ? 'fail' : 'ok', pend ? 'Kurs, Home oder Einstellungen noch nicht bestätigt' : 'Kurs, Home, Einstellungen'));
+    }
+    return list;
+  };
+  M.preflightChecks = kind => [
+    'Das Wasser um das Boot ist frei (keine Personen, Tiere oder andere Boote), der Propeller ist frei.',
+    'Rumpf und Deckel sind dicht geschlossen, der Akku ist fest eingebaut und gesichert.'
+  ].concat(kind === 'tune' ? [
+    'Fernsteuerung (Sender) ist eingeschaltet, der NOT-AUS ist in Reichweite.',
+    'Ich weiss, wie ich das Boot im Notfall zurückhole (Helfer, Rückholleine oder zweites Boot).',
+    'Rundherum sind mindestens 50 m freie Wasserfläche: bei Sprungtests fährt das Boot von selbst, auch im Kreis.',
+    'Ich beobachte das Boot während der Tests und löse bei auffälligem Verhalten sofort NOT-AUS aus.'
+  ] : [
+    'Kurs und Home-Position sind geprüft: alle Wegpunkte liegen im Wasser, die Strecke ist frei von Hindernissen.'
+  ]);
+  M.preflight = kind => M.confirm({
+    title: kind === 'tune' ? 'Boot für das Tuning scharf schalten?' : 'Boot scharf schalten?',
+    text: kind === 'tune' ? 'Danach fährt das Boot bei jedem Sprungtest von selbst, ohne Mission.' : 'Danach können Mission und Return Home den Antrieb starten.',
+    auto: M.preflightAuto(kind), checks: M.preflightChecks(kind), confirmLabel: 'Scharf schalten'
   });
 
   /* ---------- Toasts ---------- */
@@ -172,7 +232,7 @@
     arm.lastElementChild.textContent = s.armed ? 'Scharf' : 'Nicht scharf';
 
     const mode = $('#tbMode');
-    mode.className = 'pill' + (s.test.active ? ' warn' : s.mode === 'AUTO' || s.mode === 'RTH' ? ' mode-auto' : s.mode === 'ESTOP' ? ' mode-estop' : '');
+    mode.className = 'pill' + (s.test.active ? ' warn' : s.mode === 'AUTO' || s.mode === 'RTH' ? ' mode-auto' : s.mode === 'ESTOP' ? ' mode-estop' : s.mode === 'TUNE' ? ' warn' : s.mode === 'SOFT' ? ' mode-auto' : '');
     mode.firstElementChild.textContent = s.test.active ? 'Testmodus' : M.MODES[s.mode];
 
     const rec = $('#tbRec');

@@ -20,12 +20,12 @@ Nach Änderungen an JavaScript oder CSS hilft ein hartes Neuladen (Strg + Umscha
 
 | Ansicht | Inhalt |
 |---|---|
-| **Live** | Karte mit Boot, Spur, Wegpunkten, Home, Geofence und Ankunftsradius. Kompass und Lage, Antriebssysteme (Soll Gas und Ruder), Telemetrie-Liste, Einstellungen (Licht, Kühlpumpe, Reisegeschwindigkeit, Maximales Gas, Ankunftsradius). Knöpfe: Scharf schalten, Mission starten, Stopp, Return Home, NOT-AUS |
+| **Live** | Karte mit Boot, Spur, Wegpunkten, Home, Geofence und Ankunftsradius. Kompass und Lage, Antriebssysteme (Soll Gas und Ruder), Telemetrie-Liste, Einstellungen (Licht, Kühlpumpe, Reisegeschwindigkeit, Maximales Gas, Ankunftsradius). Knöpfe: Scharf schalten, Mission starten, Manuell (Funke), Manuell Soft (Tempo vom Dashboard, Ruder von der Funke), Stopp, Return Home, NOT-AUS |
 | **Mission** | Wegpunkte per Klick setzen, verschieben, sortieren. Home-Position einstellen und als Wegpunkt «H» einbauen. Als Kurs speichern, an das Boot senden |
 | **Kurse** | Kursbibliothek mit Namen. Import (GPX, GeoJSON, JSON, CSV), Export (GPX, JSON), Kennzahlen (Länge, Dauer, weiteste Entfernung von Home), «Auf Boot spielen» |
 | **Telemetrie** | Kacheln und neun einzelne Zeitreihen. Zeitfenster 1 min bis 5 h oder eigener Wert, Zoom |
 | **Einstellungen** | **Verbindung** (Auto, Nur LTE, Nur WLAN, WLAN-Zugang) und alle Parameter, Zähler zurücksetzen (Akku, LTE-Daten) |
-| **Tuning** | Regler (Tempo, Kurs, Gierrate, Bahn) und weitere Tuning-Werte bearbeiten, mit Quittung senden, Sprungtest mit Diagramm und Kennzahlen, letzter guter Satz, Profile, Export/Import. Mockup: die Verläufe rechnet ein Platzhalter-Boot (`tune-sim.js`) |
+| **Tuning** | Regler (Tempo, Kurs, Gierrate, Bahn) und weitere Tuning-Werte bearbeiten, mit Quittung senden, Tuning-Modus mit eigenem Scharfschalten (nur auf dieser Seite), Sprungtest mit Diagramm und Kennzahlen, letzter guter Satz, Profile, Export/Import. Mockup: die Verläufe rechnet ein Platzhalter-Boot (`tune-sim.js`) |
 | **Tests** | Aktoren einzeln prüfen: Motor, Ruder-Servo, Kühlpumpe, vier Lichtkanäle |
 | **Replay** | Aufgezeichnete Fahrten abspielen, Kennzahlen, Download als CSV, GPX oder JSON |
 | **Status** | Verbindung, Sensoren, Ereignis-Log, Demo-Auslöser für Alarme |
@@ -34,7 +34,7 @@ Nach Änderungen an JavaScript oder CSS hilft ein hartes Neuladen (Strg + Umscha
 
 ## Sicherheit
 
-- **Scharf schalten:** Nach dem Einschalten ist das Boot nicht scharf. Mission starten und Return Home sind gesperrt, bis man scharf schaltet (Bestätigung mit Haken). Entschärfen geht sofort.
+- **Scharf schalten:** Nach dem Einschalten ist das Boot nicht scharf. Mission starten, Manuell (Funke) und Return Home sind gesperrt, bis man scharf schaltet (Bestätigung mit Haken). Entschärfen geht sofort.
 - **NOT-AUS** wirkt sofort ohne Rückfrage und entschärft. **Freigeben** verlangt das eingetippte Wort FREIGEBEN, danach bleibt das Boot entschärft.
 - **Testmodus:** nur bei entschärftem, gestopptem Boot, mit Bestätigung. Der Motor läuft nur, solange der Knopf gedrückt bleibt (bis 100 %, höchstens 10 s). Die Pumpe läuft höchstens 30 s. Alles geht aus beim Verlassen des Reiters, nach 5 min ohne Bedienung, beim Scharf schalten, bei NOT-AUS und Verbindungsverlust.
 - **Wirksames Tempo:** Es gilt die stärkere Begrenzung von «Reisegeschwindigkeit» und «Maximales Gas».
@@ -64,7 +64,7 @@ Vollständig mit allen Schlüsseln, Einheiten und Fehlercodes: [`../docs/schnitt
 | Zähler | `resetConsumption`, `resetLteData` |
 | Verbindung | `setNetMode` (`auto`/`lte`/`wifi`), `setWifi` (SSID, Passwort), `forgetWifi` |
 | Test | `testStart`, `testEnd`, `testSet` (Motor mit Totmann, Servo, Pumpe, Pumpen-Drehzahl, Licht-Kanäle) |
-| Regler | `setTune`, `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneStep`/`tuneStop` (siehe `docs/schnittstelle.md` 6a) |
+| Regler | `setTune`, `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneMode`, `tuneStep`/`tuneStop` (siehe `docs/schnittstelle.md` 6a) |
 
 **Was die Firmware dabei garantieren muss** (Auszug, Details in Abschnitt 9 der Schnittstelle):
 

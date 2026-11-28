@@ -133,10 +133,19 @@
     arm.disabled = est;
     arm.querySelector('span').textContent = s.armed ? 'Scharf – Entschärfen' : 'Scharf schalten';
     arm.querySelector('i').innerHTML = M.icon(s.armed ? 'unlock' : 'lock');
-    $('#btnStart').disabled = !s.armed || s.mode === 'AUTO' || est;
-    $('#btnRth').disabled = !s.armed || s.mode === 'RTH' || est;
+    $('#btnStart').disabled = !s.armed || s.mode === 'AUTO' || s.mode === 'TUNE' || est;
+    $('#btnRth').disabled = !s.armed || s.mode === 'RTH' || s.mode === 'TUNE' || est;
     $('#btnStart').title = $('#btnRth').title = s.armed ? '' : 'Erst scharf schalten';
+    $('#btnManual').disabled = !s.armed || s.mode === 'MANUAL' || s.mode === 'TUNE' || est;
+    $('#btnManual').title = s.armed ? 'Gas und Ruder kommen vom Sender' : 'Erst scharf schalten';
+    $('#btnSoft').disabled = !s.armed || s.mode === 'SOFT' || s.mode === 'TUNE' || est;
+    $('#btnSoft').title = s.armed ? 'Tempo stellst du hier ein, das Ruder kommt von der Funke' : 'Erst scharf schalten';
+    renderSoft();
     $('#btnStop').disabled = s.mode === 'STOP' || est;
+    // aktiver Modus leuchtet (Mission, Manuell, Soft, Return Home, Stopp)
+    [['#btnStart', 'AUTO'], ['#btnManual', 'MANUAL'], ['#btnSoft', 'SOFT'], ['#btnRth', 'RTH'], ['#btnStop', 'STOP']].forEach(([id, m]) => {
+      const on = s.mode === m && !s.test.active; $(id).classList.toggle('is-active', on); $(id).setAttribute('aria-pressed', on);
+    });
     $('#btnEstop').innerHTML = est ? `<i data-icon="alert">${M.icon('alert')}</i> NOT-AUS freigeben` : `<i data-icon="alert">${M.icon('alert')}</i> NOT-AUS`;
     $('#btnEstop').classList.toggle('danger', true);
 
@@ -210,16 +219,32 @@
   $('#radiusChk').addEventListener('change', e => { if (map) e.target.checked ? radiusGroup.addTo(map) : radiusGroup.remove(); });
   $('#fenceChk').addEventListener('change', e => { if (map) e.target.checked ? fence.addTo(map) : fence.remove(); });
   $('#btnStart').addEventListener('click', () => M.actions.start());
+  $('#btnManual').addEventListener('click', () => M.actions.manual());
+  $('#btnSoft').addEventListener('click', () => M.actions.soft());
+
+  /* Manuell Soft: Tempo-Regler (Anzeige in der gewaehlten Einheit, intern km/h) */
+  const softKmh = () => { const v = Number($('#softRange').value); return M.units.speed === 'ms' ? v * 3.6 : v; };
+  function renderSoft() {
+    const on = s.mode === 'SOFT', row = $('#softRow'), r = $('#softRange');
+    row.hidden = !on; if (!on) return;
+    const max = M.speedLimit().kmh;
+    r.max = +M.spd(max).toFixed(2); r.step = M.units.speed === 'ms' ? 0.1 : 0.5;
+    if (document.activeElement !== r) r.value = +M.spd(s.soft.speed).toFixed(2);
+    $('#softTxt').textContent = `${M.fmtSpd(s.soft.speed)} ${M.spdUnit()}`;
+    $('#softHint').textContent = `Höchstens ${M.fmtSpd(max)} ${M.spdUnit()} (Reisegeschwindigkeit und Gas-Maximum). Das Ruder steuerst du mit der Funke.`;
+  }
+  $('#softRange').addEventListener('input', e => { $('#softTxt').textContent = `${M.fmt(Number(e.target.value), M.units.speed === 'ms' ? 1 : 1)} ${M.spdUnit()} …`; });
+  $('#softRange').addEventListener('change', () => { M.actions.setSoftSpeed(softKmh()); $('#softRange').blur(); });
+  const nudge = d => M.actions.setSoftSpeed(s.soft.speed + d * (M.units.speed === 'ms' ? 0.72 : 1));
+  $('#softPlus').addEventListener('click', () => nudge(1));
+  $('#softMinus').addEventListener('click', () => nudge(-1));
+  $('#softZero').addEventListener('click', () => M.actions.setSoftSpeed(0));
+  M.on('units', renderSoft);
   $('#btnStop').addEventListener('click', () => M.actions.stop());
   $('#btnRth').addEventListener('click', () => M.actions.rth());
   $('#btnArm').addEventListener('click', async () => {
     if (s.armed) return M.actions.disarm();
-    const ok = await M.confirm({
-      title: 'Boot scharf schalten?',
-      text: 'Danach können Mission und Return Home den Antrieb starten.',
-      check: 'Der Bereich um das Boot ist frei, der Propeller dreht frei.',
-      confirmLabel: 'Scharf schalten'
-    });
+    const ok = await M.preflight(s.mode === 'TUNE' ? 'tune' : 'mission');
     if (ok) M.actions.arm();
   });
   $('#btnEstop').addEventListener('click', async () => {

@@ -402,3 +402,31 @@ details.tune-card[open] > summary { margin-bottom: 8px; }
 @media (max-width: 760px) {
   .nav-item span { font-size: 10px; }
 }
+
+.tune-mode { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 12px; }
+.tune-mode.on { border-color: var(--warn); background: color-mix(in srgb, var(--warn) 8%, var(--panel)); }
+.tune-mode .grow { flex: 1; }
+.pf-auto { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; font-size: 13px; }
+.pf-auto li { display: grid; grid-template-columns: 18px auto 1fr; gap: 8px; align-items: baseline; padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.pf-auto em { font-style: normal; text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+.pf-ok b { color: var(--ok); } .pf-warn b, .pf-warn em { color: var(--warn); } .pf-fail b, .pf-fail em { color: var(--crit); }
+.pf-checks { max-height: 46vh; overflow: auto; margin-bottom: 6px; }
+.pf-checks .chk.big { margin: 0 0 10px; }
+.modal:has(.pf-checks) { width: min(520px, 100%); max-height: 92vh; overflow: auto; }
+
+.actionbar #btnEstop { grid-column: 1 / -1; }
+
+.soft-row { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 10px; background: color-mix(in srgb, var(--accent) 8%, var(--panel2)); }
+.soft-row[hidden] { display: none; }
+.soft-row input[type="range"] { flex: 1 1 140px; min-width: 100px; }
+.soft-row b { min-width: 74px; text-align: right; font-variant-numeric: tabular-nums; }
+.soft-row .btn { padding: 6px 12px; }
+.soft-row small { flex: 1 1 100%; }
+
+/* aktiver Modus leuchtet (auch wenn der Knopf gesperrt ist) */
+.actionbar .btn.is-active { opacity: 1; background: color-mix(in srgb, var(--ok) 22%, var(--panel2)); border-color: var(--ok); color: var(--ok); box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 35%, transparent), 0 0 14px color-mix(in srgb, var(--ok) 55%, transparent); animation: glow 2.2s ease-in-out infinite; }
+.actionbar #btnStop.is-active { --ok: var(--muted); animation: none; box-shadow: 0 0 0 2px color-mix(in srgb, var(--muted) 35%, transparent); }
+@keyframes glow { 50% { box-shadow: 0 0 0 2px color-mix(in srgb, var(--ok) 20%, transparent), 0 0 6px color-mix(in srgb, var(--ok) 30%, transparent); } }
+
+.tune-gps { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 6px 0 0; font-size: 12px; color: var(--muted); }
+.tune-gps select { padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--panel2); color: var(--text); font: inherit; }

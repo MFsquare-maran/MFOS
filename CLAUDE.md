@@ -68,14 +68,14 @@ Es gibt **keine automatischen Tests**. Dashboard-Änderungen im Browser prüfen 
 
 ## Schnittstelle (Kurzfassung, Details in `docs/schnittstelle.md`)
 
-Transport: **MQTT 3.1.1 über TLS, JSON**, Broker Mosquitto (`deploy/`), TLS beendet der Reverse Proxy (`mfos.mfsquare.ch`, Port 8883 oder `wss` auf 443 unter `/mqtt`). Topics `mfos/<id>/telemetry|status|event|cmd|ack`. Das Boot meldet sich mit Benutzername = Kennung und starkem Passwort an, **prüft das Zertifikat** (Let's Encrypt, festgelegtes Wurzelzertifikat) und braucht dafür die richtige Uhrzeit. Ein Boot darf nur seine eigenen Topics.
+Transport: **MQTT 3.1.1 über TLS, JSON**, Broker Mosquitto (`deploy/`), TLS beendet der Reverse Proxy (`mfos.mfsquare.ch`, Port 8883 oder `wss` auf 443 unter `/mqtt`). Topics `mfos/<id>/telemetry|status|event|cmd|ack|tune`. Das Boot meldet sich mit Benutzername = Kennung und starkem Passwort an, **prüft das Zertifikat** (Let's Encrypt, festgelegtes Wurzelzertifikat) und braucht dafür die richtige Uhrzeit. Ein Boot darf nur seine eigenen Topics.
 
 **Die Firmware muss senden:**
 
 | Was | Schlüssel / Inhalt |
 |---|---|
 | Telemetrie (schnell, Standard 1 s, bis 100 ms) | `t`, `lat`, `lon`, `speed`, `course`, `heading`, `roll`, `pitch`, `bat_v`, `bat_a`, `bat_w`, `bat_mah`, `bat_wh`, `temp_hull`, `temp_esc`, `cmd_throttle`, `cmd_rudder` |
-| Zustand (sofort bei Änderung) | `mode` (`MANUAL`/`AUTO`/`RTH`/`STOP`/`ESTOP`), `armed`, `test`, `wp_active`, `mission_id`, `mission_name`, `pump_on`, `pump_mode`, `pump_speed`, `light_mode`, `leak`, `fix`, `link` (`lte`/`wifi`/`none`) |
+| Zustand (sofort bei Änderung) | `mode` (`MANUAL`/`SOFT`/`AUTO`/`RTH`/`STOP`/`ESTOP`), `armed`, `test`, `wp_active`, `mission_id`, `mission_name`, `pump_on`, `pump_mode`, `pump_speed`, `light_mode`, `leak`, `fix`, `link` (`lte`/`wifi`/`none`) |
 | Langsam (≥ alle 10 s) | `pressure`, `sats`, `hdop`, `lte_dbm`, `lte_operator`, `lte_tech`, `wifi_ssid`, `wifi_rssi`, `wifi_ip`, `data_lte_mb_today`/`_reset`/`_total`, `uptime_s`, `fw`, `boot_id` |
 | Ereignisse | `boot`, `armed`, `disarmed`, `estop`, `estop_released`, `mission_started`, `mission_done`, `home_reached`, `stopped`, `failsafe`, `geofence_exit`, `test_started`, `test_ended`, `net_switch`, `wifi_result`, `counter_reset` |
 | Quittung zu jedem Befehl | `{id, ok}` oder `{id, ok:false, error}` innerhalb 2 s |
@@ -85,19 +85,21 @@ Transport: **MQTT 3.1.1 über TLS, JSON**, Broker Mosquitto (`deploy/`), TLS bee
 
 | Gruppe | Befehle |
 |---|---|
-| Fahren | `arm`, `disarm`, `start`, `stop`, `rth`, `estop`, `release` |
+| Fahren | `arm`, `disarm`, `start`, `manual` (Funke steuert), `soft` + `setSoftSpeed` (Tempo vom Dashboard, Ruder von der Funke), `stop`, `rth`, `estop`, `release` |
 | Konfiguration | `setMission` (Wegpunkte, auch `{home:true}`), `setHome`, `setParams` (`cruiseSpeed`, `maxThrottle`, `arriveRadius`, `loop`, `geofence`, `failsafe`, `linkTimeout`, `pumpOn`, `pumpOff`, `telemetry`, …) |
 | Aktoren | `setLight` 0–5, `setPumpMode` `auto`/`on`/`off`, `setPumpSpeed` 10–100 |
 | Zähler | `resetConsumption`, `resetLteData` |
 | Verbindung | `setNetMode` `auto`/`lte`/`wifi`, `setWifi` (ssid, password), `forgetWifi` |
 | Test | `testStart`, `testEnd`, `testSet` (`motor` mit Totmann, `servo`, `pump`, `pumpSpeed`, `light`) |
-| Regler | `setTune` (Werte `<gruppe>.<name>`, Liste in `dashboard/js/tune-defs.js`), `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneStep`/`tuneStop` (Sprungtest nur scharf und `AUTO`, Tuning-Telemetrie `tune`), siehe `docs/schnittstelle.md` 6a |
+| Regler | `setTune` (Werte `<gruppe>.<name>`, Liste in `dashboard/js/tune-defs.js`), `tuneDefaults`, `tuneRestore`, `tuneMarkGood`, `tuneMode` (Modus `TUNE`, nur von der Seite Tuning aus), `tuneStep`/`tuneStop` (Sprungtest nur scharf in `TUNE`; das Boot zeichnet auf und lädt den Verlauf danach auf `mfos/<id>/tune`, `tuneFetch` holt Fehlendes), siehe `docs/schnittstelle.md` 6a |
 
 Befehlsform: `{"id","cmd","args","ts","ttl_ms"}`. Das Dashboard berechnet Akku-Prozent, Restlaufzeit, Distanzen, ETA, Alarme und Fahrten-Kennzahlen selbst, die Firmware liefert das nicht.
 
 **Wer eine Seite der Schnittstelle ändert, ändert zuerst `docs/schnittstelle.md`, dann `dashboard/js/state.js` (Simulation und Schlüssel) und die Kurzfassungen in `CLAUDE.md` und `dashboard/README.md`.**
 
 ## Sicherheitsregeln, nie abschwächen
+
+0. Vor jedem Scharfschalten im Dashboard erscheint die **Checkliste** (`M.preflight`, `docs/schnittstelle.md` 8a): automatische Prüfungen sperren bei ✕, alle Haken sind Pflicht. Nicht abkürzen. Das Tuning läuft nur im Modus `TUNE`, den es nur auf der Seite Tuning gibt (Verlassen der Seite beendet ihn und entschärft).
 
 1. Nach jedem Start und nach NOT-AUS ist das Boot **nicht scharf**. `start` und `rth` nur wenn scharf.
 2. NOT-AUS wirkt sofort ohne Rückfrage. Freigeben verlangt eine Eingabe und lässt das Boot entschärft.
